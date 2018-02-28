@@ -17,20 +17,20 @@ $pages_year = array(); //[year][pages]
 
 #define city->citycode
 $countycode = array();
-$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
                   "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                   "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20");
-$year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "04"=>"104", "05"=>"105","06"=>"106", "07"=>"107");
+"金門縣"=>"J20"*/);
+$year = array("0"=>"100"/*, "1"=>"101", "2"=>"102", "3"=>"103", "04"=>"104", "05"=>"105","06"=>"106", "07"=>"107"*/);
 
 /**************************************main*************************************************/
-$fp = create_txt($countycode);
+//$fp = create_txt($countycode);
 $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
 $code = getCheckNumber($verify_code_url, $cookie_file, $file);
 
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
 foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
-    
+    $fp = create_txt($countycodeKey);
     foreach($year as $yearKey => $yearValue){   //跑年度
 
         for($i = 1 ; $i <= $page ; $i++){   //跑頁數
@@ -39,8 +39,10 @@ foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
             $html = post($login_url, $post, $cookie_file);
             
             $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-            echo $countycodeKey."<br>";
+            /*echo $countycodeKey."<br>";*/
             $xpath = create_dom($html);
+            
+            $fp = $content = getContent($xpath, $countycodeKey, $fp);
             if($i == 1){    //只要第一次拿到頁數就好了~~
                 $page = getpage($xpath, $data_Digits, $page);
             }   
@@ -55,18 +57,40 @@ if(unlink($file))
     echo "成功刪除!!";
 else
     echo "刪除失敗!!";
-print_r($pages_year);
 
 exit;
 
 
 /*********************************************************************************************/
 
+function DeleteHtml($str){
+    $str = trim($str);
+    $str = strip_tags($str,"");
+    $str = str_replace("\t","",$str);
+    $str = str_replace("\r\n","",$str); 
+    $str = str_replace("\r","",$str); 
+    $str = str_replace("\n","",$str); 
+    $str = str_replace(" "," ",$str); 
+    return $str;
+}
 
-function getContent($xpath){
-    foreach($xpath->query('//span[@class = "pagebanner"]') as $node){
-        
-    }
+//取得網頁中表格內容並寫入相對應的文件
+function getContent($xpath, $countycodeKey, $fp){ 
+    fwrite($fp, PHP_EOL);
+    foreach($xpath->query('//tr[@class = "even"]') as $node){
+        $content =  $node->textContent;
+        $content = DeleteHtml($content);
+        fprintf($fp, $content .PHP_EOL);
+        echo $content."<br>";
+    } 
+    foreach($xpath->query('//tr[@class = "odd"]') as $node){
+        $content =  $node->textContent;
+        $content = DeleteHtml($content);
+        fprintf($fp, $content .PHP_EOL);
+        echo $content."<br>";
+    } 
+    return $fp;
+    fclose($fp);
 }
 
 //取得session
@@ -117,7 +141,6 @@ function getCheckNumber($image_url, $cookie_file, $file){
     $code = FALSE;
     $code = "";    
     fopen("{$file}", "w");
-    var_dump((bool) $code); 
     do{
         $code = file_get_contents($file);
     }while($code == FALSE);
@@ -149,11 +172,11 @@ function getpage($xpath, $data_Digits, $page){
 }
 
 //創建文檔，傳入各縣市
-function create_txt($countycode){
-    foreach($countycode as $conutyKey => $countyValue){
-        $fp=fopen("{$conutyKey}.txt","w");
-        fprintf($fp,"建造執照,建築地點,起造人,設計人,監造人,承造人\n");
-    }
+function create_txt($countycodeKey){
+   
+    $fp=fopen("{$countycodeKey}.txt","w");
+    fprintf($fp,"建造執照,建築地點,起造人,設計人,監造人,承造人\n");
+    
     return $fp;
 }
 
