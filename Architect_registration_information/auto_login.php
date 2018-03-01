@@ -16,7 +16,7 @@ $page = 0;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次�
 
 
 #define city->jobcode
-$jobcode = array("開業"=>"1", "專業工程人員"=>"2", "公務員"=>"3","教授兼公務員"=>"4", "其它"=>"5");
+$jobcode = array("開業"=>"1"/*, "專業工程人員"=>"2", "公務員"=>"3","教授兼公務員"=>"4", "其它"=>"5"*/);
 
 
 /**************************************main*************************************************/
@@ -28,14 +28,12 @@ foreach($jobcode as $jobcodeKey => $jobcodeValue){
     $post = http_build_query(array("id_no_d21" => "", "name_d21" => "", "edu_level_d21" => "AA", "capacity_get_d21" => "AA", "job_d21" => $jobcodeValue, "insrand" => $code));
     $html = post($login_url, $post, $cookie_file);        
     $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-    /*echo $html;*/
     $xpath = create_dom($html);
     $page = getpage($xpath, $data_Digits, $page);
     for($i = 1 ; $i <= $page ; $i++){
         $post = http_build_query(array("id_no_d21" => "", "name_d21" => "", "edu_level_d21" => "AA", "capacity_get_d21" => "AA", "job_d21" => $jobcodeValue, "insrand" => $code, "pageCount" => $page, "showRows" => "15", "pageNo" => $i));
         $html = post($login_url, $post, $cookie_file);
         $html = iconv("Big5", "UTF-8//IGNORE", $html);
-        /*echo $html;*/
         $xpath = create_dom($html);
         $fp = getContent($xpath, $fp);
     } 
@@ -67,20 +65,41 @@ function DeleteHtml($str){
     return $str;
 }
 
+function get_mark($xpath, $node){
+    $flag = TRUE;
+    if($xpath->query('img/@src', $node)){
+        foreach($xpath->query('td/img/@src', $node) as $src){
+            if($src->textContent == "/images/notation/hand.gif"){
+                $mark = "註銷  ";
+                return $mark;
+            }
+            elseif($src->textContent == "/images/notation/hand2.gif"){
+                $mark = "失效  ";
+                return $mark;
+            }  
+        }
+        $flag = FALSE;
+    }
+    if($flag == FALSE){
+        $mark = "正常  ";
+        return $mark;    
+    }
+}
+
 //取得網頁中表格內容並寫入相對應的文件
 function getContent($xpath, $fp){ 
     fwrite($fp, PHP_EOL);
     foreach($xpath->query('//tr[@class = "list0"]') as $node){
+        $mark = get_mark($xpath, $node);
         $content =  $node->textContent;
         $content = DeleteHtml($content);
-        fprintf($fp, $content.PHP_EOL);
-        echo $content."<br>";
+        fprintf($fp, $mark.$content.PHP_EOL);
     } 
     foreach($xpath->query('//tr[@class = "list1"]') as $node){
+        $mark = get_mark($xpath, $node);
         $content =  $node->textContent;
         $content = DeleteHtml($content);
-        fprintf($fp, $content.PHP_EOL);
-        echo $content."<br>";
+        fprintf($fp, $mark.$content.PHP_EOL);
     } 
     return $fp;
 }
