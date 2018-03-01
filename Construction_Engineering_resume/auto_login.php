@@ -17,7 +17,7 @@ $pages_year = array(); //[year][pages]
 
 #define city->citycode
 $countycode = array();
-$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30"/*, "桃園市"=>"I40", "新竹市"=>"I50",  
                   "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                   "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
 "金門縣"=>"J20"*/);
@@ -63,6 +63,7 @@ exit;
 
 /*********************************************************************************************/
 
+//清除多餘字眼
 function DeleteHtml($str){
     $str = trim($str);
     $str = strip_tags($str,"");
@@ -80,13 +81,13 @@ function getContent($xpath, $countycodeKey, $fp){
     foreach($xpath->query('//tr[@class = "even"]') as $node){
         $content =  $node->textContent;
         $content = DeleteHtml($content);
-        fprintf($fp, $content .PHP_EOL);
+        fprintf($fp, $content.PHP_EOL);
         echo $content."<br>";
     } 
     foreach($xpath->query('//tr[@class = "odd"]') as $node){
         $content =  $node->textContent;
         $content = DeleteHtml($content);
-        fprintf($fp, $content .PHP_EOL);
+        fprintf($fp, $content.PHP_EOL);
         echo $content."<br>";
     } 
     return $fp;
@@ -173,10 +174,8 @@ function getpage($xpath, $data_Digits, $page){
 
 //創建文檔，傳入各縣市
 function create_txt($countycodeKey){
-   
     $fp=fopen("{$countycodeKey}.txt","w");
     fprintf($fp,"建造執照,建築地點,起造人,設計人,監造人,承造人\n");
-    
     return $fp;
 }
 
