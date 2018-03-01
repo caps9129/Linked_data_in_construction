@@ -11,7 +11,7 @@ $file = 'code.txt';
 $timeout = 10;   //設置等待時間
 $data_Digits = 4; //取得可能為頁數字元之數量
 $page = 0;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
-//$yearIndex = 0;
+
 
 
 

@@ -11,20 +11,19 @@ $file = 'code.txt';
 $timeout = 10;   //設置等待時間
 $data_Digits = 4; 
 $page = 1;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
-//$yearIndex = 0;
-$pages_year = array(); //[year][pages]
 
 
-#define city->citycode
+
+#可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30"/*, "桃園市"=>"I40", "新竹市"=>"I50",  
-                  "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
-                  "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20"*/);
+$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+                    "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
+                    "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
+                    "金門縣"=>"J20"*/);
 $year = array("0"=>"100"/*, "1"=>"101", "2"=>"102", "3"=>"103", "04"=>"104", "05"=>"105","06"=>"106", "07"=>"107"*/);
 
 /**************************************main*************************************************/
-//$fp = create_txt($countycode);
+
 $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
 $code = getCheckNumber($verify_code_url, $cookie_file, $file);
 
@@ -35,11 +34,11 @@ foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
 
         for($i = 1 ; $i <= $page ; $i++){   //跑頁數
             $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
-            /*echo "post:".$post."<br>";*/
+          
             $html = post($login_url, $post, $cookie_file);
             
             $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-            /*echo $countycodeKey."<br>";*/
+         
             $xpath = create_dom($html);
             
             $fp = getContent($xpath, $fp);
@@ -120,9 +119,6 @@ function post($url, $post, $cookie_file){
     return $html;
 }
 
-function getcountyValue($ckey){
-
-}
 //取出驗證碼
 function getCheckNumber($image_url, $cookie_file, $file){
     
@@ -147,9 +143,6 @@ function getCheckNumber($image_url, $cookie_file, $file){
     }while($code == FALSE);
     return $code;
 }
-
-//echo  $html;
-
 
 
 //取得頁數
