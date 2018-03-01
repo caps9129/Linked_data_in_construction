@@ -42,7 +42,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
             /*echo $countycodeKey."<br>";*/
             $xpath = create_dom($html);
             
-            $fp = $content = getContent($xpath, $countycodeKey, $fp);
+            $fp = getContent($xpath, $fp);
             if($i == 1){    //只要第一次拿到頁數就好了~~
                 $page = getpage($xpath, $data_Digits, $page);
             }   
@@ -76,7 +76,7 @@ function DeleteHtml($str){
 }
 
 //取得網頁中表格內容並寫入相對應的文件
-function getContent($xpath, $countycodeKey, $fp){ 
+function getContent($xpath, $fp){ 
     fwrite($fp, PHP_EOL);
     foreach($xpath->query('//tr[@class = "even"]') as $node){
         $content =  $node->textContent;

@@ -9,55 +9,47 @@ $login_url = "http://cpabm.cpami.gov.tw/search/bmg/queryArchInfo.jsp";
 $verify_code_url = "http://cpabm.cpami.gov.tw/img_code.jsp";    //取得驗證碼圖片
 $file = 'code.txt';    
 $timeout = 10;   //設置等待時間
-$data_Digits = 4; 
-$page = 1;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
+$data_Digits = 4; //取得可能為頁數字元之數量
+$page = 0;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
 //$yearIndex = 0;
 
 
 
-#define city->citycode
-$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30"/*, "桃園市"=>"I40", "新竹市"=>"I50",  
-                  "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
-                  "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20"*/);
-$year = array("0"=>"100"/*, "1"=>"101", "2"=>"102", "3"=>"103", "04"=>"104", "05"=>"105","06"=>"106", "07"=>"107"*/);
+#define city->jobcode
+$jobcode = array("開業"=>"1", "專業工程人員"=>"2", "公務員"=>"3","教授兼公務員"=>"4", "其它"=>"5");
+
 
 /**************************************main*************************************************/
-//$fp = create_txt($countycode);
+
 $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
 $code = getCheckNumber($verify_code_url, $cookie_file, $file);
-
- //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
-/*foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
-    $fp = create_txt($countycodeKey);
-    foreach($year as $yearKey => $yearValue){   //跑年度
-
-        for($i = 1 ; $i <= $page ; $i++){   //跑頁數
-            $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
+foreach($jobcode as $jobcodeKey => $jobcodeValue){
+    $fp = create_txt($jobcodeKey);
+    $post = http_build_query(array("id_no_d21" => "", "name_d21" => "", "edu_level_d21" => "AA", "capacity_get_d21" => "AA", "job_d21" => $jobcodeValue, "insrand" => $code));
+    $html = post($login_url, $post, $cookie_file);        
+    $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
+    /*echo $html;*/
+    $xpath = create_dom($html);
+    $page = getpage($xpath, $data_Digits, $page);
+    for($i = 1 ; $i <= $page ; $i++){
+        $post = http_build_query(array("id_no_d21" => "", "name_d21" => "", "edu_level_d21" => "AA", "capacity_get_d21" => "AA", "job_d21" => $jobcodeValue, "insrand" => $code, "pageCount" => $page, "showRows" => "15", "pageNo" => $i));
+        $html = post($login_url, $post, $cookie_file);
+        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+        /*echo $html;*/
+        $xpath = create_dom($html);
+        $fp = getContent($xpath, $fp);
+    } 
            
-            $html = post($login_url, $post, $cookie_file);
-            
-            $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-           
-            $xpath = create_dom($html);
-            
-            $fp = $content = getContent($xpath, $countycodeKey, $fp);
-            if($i == 1){    //只要第一次拿到頁數就好了~~
-                $page = getpage($xpath, $data_Digits, $page);
-            }   
-        }
-        
-        
-        
-    }
-    
 }
+
+ 
+    
 if(unlink($file))
     echo "成功刪除!!";
 else
     echo "刪除失敗!!";
-*/
-echo $code;
+
+
 exit;
 
 
@@ -76,22 +68,21 @@ function DeleteHtml($str){
 }
 
 //取得網頁中表格內容並寫入相對應的文件
-function getContent($xpath, $countycodeKey, $fp){ 
+function getContent($xpath, $fp){ 
     fwrite($fp, PHP_EOL);
-    foreach($xpath->query('//tr[@class = "even"]') as $node){
+    foreach($xpath->query('//tr[@class = "list0"]') as $node){
         $content =  $node->textContent;
         $content = DeleteHtml($content);
         fprintf($fp, $content.PHP_EOL);
         echo $content."<br>";
     } 
-    foreach($xpath->query('//tr[@class = "odd"]') as $node){
+    foreach($xpath->query('//tr[@class = "list1"]') as $node){
         $content =  $node->textContent;
         $content = DeleteHtml($content);
         fprintf($fp, $content.PHP_EOL);
         echo $content."<br>";
     } 
     return $fp;
-    fclose($fp);
 }
 
 //取得session
@@ -120,9 +111,6 @@ function post($url, $post, $cookie_file){
     return $html;
 }
 
-function getcountyValue($ckey){
-
-}
 //取出驗證碼
 function getCheckNumber($image_url, $cookie_file, $file){
     
@@ -155,19 +143,19 @@ function getCheckNumber($image_url, $cookie_file, $file){
 //取得頁數
 function getpage($xpath, $data_Digits, $page){
     /*if($xpath){*/
-    foreach($xpath->query('//span[@class = "pagebanner"]') as $node) {  //取得頁數
+    foreach($xpath->query('//td[@class = "listb"]') as $node) {  //取得頁數
         $temp = array();    //儲存所有可能字元
         $temp_1 = array();  //儲存正確字元
         $temp = str_split($node->textContent, 1); //分割成1個字元存入陣列
-        $temp = array_splice($temp, 17 ,19);/**/ 
-        $temp = array_splice($temp, 0, $data_Digits);/*取4位數，之後筆數可以往後取*/
+        
+        $temp = array_splice($temp, 14 ,$data_Digits);
+        
         foreach($temp as $tempKey => $tempValue){
             if(is_numeric($tempValue)){ //判斷是否為數字
                 array_push($temp_1, $tempValue);
             }
-        }  
+        }
         $page =  implode("", $temp_1);
-        $page = ceil($page / 10.0); //每一頁10筆
         return $page;
     }
 }
@@ -175,7 +163,7 @@ function getpage($xpath, $data_Digits, $page){
 //創建文檔，傳入各縣市
 function create_txt($countycodeKey){
     $fp=fopen("{$countycodeKey}.txt","w");
-    fprintf($fp,"建造執照,建築地點,起造人,設計人,監造人,承造人\n");
+    fprintf($fp,"註記,建築師姓名,建築師證書字號,開業證號,事務所名稱\n");
     return $fp;
 }
 
