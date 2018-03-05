@@ -39,7 +39,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
             $html = post($login_url, $post, $cookie_file);
             
             $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-         
+            //echo $html;
             $xpath = create_dom($html);
             
             $fp = getContent($xpath, $fp);
@@ -80,54 +80,20 @@ function getContent($xpath, $fp){
     fwrite($fp, PHP_EOL);
     
     foreach($xpath->query('//div[@class="content2"]//tr') as $rowIdx=> $node){
-      if($node->childNodes->length>=12 && $rowIdx>0){
+        if($node->childNodes->length>=12 && $rowIdx>0){
         $item=[
-          trim($node->childNodes[1]->textContent),
-          trim($node->childNodes[3]->textContent),
-          trim($node->childNodes[5]->textContent),
-          trim($node->childNodes[7]->textContent),
-          trim($node->childNodes[9]->textContent),
-          trim($node->childNodes[11]->textContent),
+            trim($node->childNodes[1]->textContent),     //trim()可以移除多餘的跳脫字元...
+            trim($node->childNodes[3]->textContent),
+            trim($node->childNodes[5]->textContent),
+            trim($node->childNodes[7]->textContent),
+            trim($node->childNodes[9]->textContent),
+            trim($node->childNodes[11]->textContent),
         ];
         fprintf($fp,implode(",",$item).PHP_EOL);
-      }
-    } 
-    //fclose($fp);
-    return $fp; //return $fp 目的?
-    
-    ////////////////////////////////////////////////////////////////////////////////////
-    
-    /*foreach($xpath->query('//tr[@class = "even"]') as $node){
-      foreach($node->childNodes as $idx => $nn){
-        echo "{$idx}\t".trim($nn->textContent)."\n";
-      }
-      echo "\n";
-        exit;
-      
-        $content =  $node->textContent;
-        echo $content;
-        exit;
-        
-        foreach($node->query('//td') as $td){
-          echo $td->textContent."\n";
         }
-        exit;
-      
-        $content = DeleteHtml($content);
-        
-        
-        fprintf($fp, $content.PHP_EOL);
-        echo $content."\n";
-        //echo $content."<br>";
+        echo $node->textContent;
     } 
-    foreach($xpath->query('//tr[@class = "odd"]') as $node){
-        $content =  $node->textContent;
-        $content = DeleteHtml($content);
-        fprintf($fp, $content.PHP_EOL);
-        echo $content."\n";
-    } 
-    return $fp;
-    fclose($fp);*/
+    return $fp; //return $fp 目的?
 }
 
 //取得session
