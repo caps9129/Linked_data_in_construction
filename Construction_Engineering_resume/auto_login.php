@@ -1,5 +1,4 @@
 <?php
-require_once(__DIR__."/simple_html_dom.php");
 ini_set('max_execution_time', '0');
 ini_set("memory_limit","8192M");
 //初始化變量
@@ -10,17 +9,17 @@ $login_url = "http://cpabm.cpami.gov.tw/cers/SearchLicList.do";
 $verify_code_url = "http://cpabm.cpami.gov.tw/cers/img_code.jsp";    //取得驗證碼圖片
 $file = 'code.txt';    
 $timeout = 10;   //設置等待時間
-$data_Digits = 4; 
+$data_Digits = 4;   //判讀為數字(頁數)的位數
 $page = 1;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
 
 
 #可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00", /*"高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
                     "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                     "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-                    "金門縣"=>"J20");
-$year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "04"=>"104", "05"=>"105","06"=>"106", "07"=>"107");
+                    "金門縣"=>"J20"*/);
+$year = array(/*"0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", */"7"=>"107");
 
 /**************************************main*************************************************/
 
@@ -28,43 +27,48 @@ $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
 $code = getCheckNumber($verify_code_url, $cookie_file, $file);
 $db = dbConnect();
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
-foreach($countycode as $countycodeKey => $countycodeValue){  //跑縣市
+foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
     echo $countycodeKey."<br>";
     foreach($year as $yearKey => $yearValue){   //跑年度
         echo $yearValue."<br>";
         for($i = 1 ; $i <= $page ; $i++){   //跑頁數
+            
             $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
           
             $html = post($login_url, $post, $cookie_file);
             
-            $html = iconv("Big5", "UTF-8//IGNORE", $html); //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-            echo $html."<br>";
+            $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
+        
             $xpath = create_dom($html);
-            
-            $postURL = getURLContent($xpath);   //獲取往下一層的連結
-            if($postURL){
-                $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
-                foreach($postURL as $postURLKey => $postURLValue){
-                    $postURLValue =  implode("", $postURLValue);    //將連結切割成字串使得可以當作post使用
-                    $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
-                    $html = iconv("Big5", "UTF-8//IGNORE", $html);
-                    $xpath = create_dom($html);
-                    $textcontent = getTEXTContent($xpath);  //回傳文字陣列
-                    echo $textcontent[0]."<br>";
-                    $urlcontent = getTEXTContentWithURL($xpath); //回傳下一層的連結
-                    $raw_data = match($textcontent, $urlcontent); //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
-                    insertIndb($db, $raw_data); //將資料存入資料庫
-                }
-            }
 
             if($i == 1){    //只要第一次拿到頁數就好了~~
                 $page = getpage($xpath, $data_Digits, $page);
+                /*echo "PAGE:".$page;*/
             }   
+
+            $postURL = getURLContent($xpath);   //獲取往下一層的連結
+
+            if($postURL){
+                $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
+                foreach($postURL as $postURLKey => $postURLValue){
+                    $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
+                    $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
+                    $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                    $xpath = create_dom($html);
+                    $textcontent = getTEXTContent($xpath);   //回傳文字陣列
+                    $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
+                    $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
+                    insertIndb($db, $raw_data);   //將資料存入資料庫
+                }
+            }
+
+          
         }
         
     }
     
 }
+mysqli_close($db);
 if(unlink($file))
     echo "成功刪除!!";
 else
@@ -98,7 +102,9 @@ function insertIndb($db, $raw_data){
     //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
     $sql = "UPDATE `building_contractor` SET `Industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `uniform_number`= N'$raw_data[3]', `capital`= N'$raw_data[4]', 
            `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_name`= N'$raw_data[1]'";
-	mysqli_query($db , $sql);
+    mysqli_query($db , $sql);
+    
+    echo "Insert".$raw_data[0]."complete<br>";
     
 }
 
