@@ -1,103 +1,321 @@
 <?php
-ini_set('max_execution_time', '0');
-ini_set("memory_limit","8192M");
+
 include_once(__DIR__."/simple_html_dom.php");
+ini_set('memory_limit', '-1');
+
 //初始化變量
 
 header("Content-Type:text/html; charset=utf-8");
 $cookie_file = "valid.tmp";
-$login_url = "http://cpabm.cpami.gov.tw/search/bmg/queryArchBusiness.jsp";    
-$verify_code_url = "http://cpabm.cpami.gov.tw/img_code.jsp";    //取得驗證碼圖片
-$file = 'code.txt';    
+$login_url = "http://cpabm.cpami.gov.tw/cers/SearchLicList.do";    
+$verify_code_url = "http://cpabm.cpami.gov.tw/cers/img_code.jsp";    //取得驗證碼圖片   
 $timeout = 10;   //設置等待時間
 $data_Digits = 4;   //判讀為數字(頁數)的位數
-$page = 0;  
-
-
+$page = 1;  //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次，以取得正確的page頁數)
+$arr_data_design = array();
+$arr_data_supervise = array();
+$arr_total_data = array();
 #可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"B", "高雄市"=>"C", "基隆市"=>"F", "宜蘭縣"=>"G", "新北市"=>"H", "桃園市"=>"I", "新竹市"=>"J", "新竹縣"=>"K", 
-                    "苗栗縣"=>"L", "台中市"=>"M", "台中縣"=>"N", "彰化縣"=>"O", "南投縣"=>"P", "雲林縣"=>"Q", "嘉義市"=>"R", "嘉義縣"=>"S", 
-                    "台南市"=>"T", "台南縣"=>"U", "高雄縣"=>"V", "屏東縣"=>"W", "花蓮縣"=>"X", "台東縣"=>"Y", "澎湖縣"=>"Z", "連江縣"=>"E",
-                    "金門縣"=>"D");
-$year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107");
+$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+                    "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
+                    "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
+"金門縣"=>"J20"*/);
+$year = array("0"=>"100"/*, "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107"*/);
 
-/**************************************main*************************************************/
+/**************************************main***************************************************************/
+
+
 
 $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
-$code = getCheckNumber($verify_code_url, $cookie_file, $file);
+$code = getCheckNumber($verify_code_url, $cookie_file);
 $db = dbConnect();
+
+echo "Start Collect Data......\n";
+
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
 foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
-    echo $countycodeKey."<br>";
     foreach($year as $yearKey => $yearValue){   //跑年度
-        echo $yearValue."<br>";
         $i=1;
-        do{   //跑頁數
-            
-            $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
-          
-            $html = post($login_url, $post, $cookie_file);
-            
-            $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
+        do{
+
+            $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
         
+            $html = post($login_url, $post, $cookie_file);
+
+            $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
+           
+            checkExpired($html, $verify_code_url, $cookie_file, $timeout);
+
             $xpath = create_dom($html);
 
             if($i == 1){    //只要第一次拿到頁數就好了~~
                 $page = getpage($xpath, $data_Digits, $page);
-                /*echo "PAGE:".$page;*/
-            }   
+                /*echo "PAGE:".$page."<br>\n";/**/
+            }
+
+            
 
             echo "page: {$countycodeKey} | {$yearValue} | {$i}/{$page}<br>\n";
 
-            $postURL = getURLContent($xpath);   //獲取往下一層的連結
-
+            
+            $postURL = getURLContent($html);   //獲取往下一層的連結
             if($postURL){
-                $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
-                /*$check = 0;*/
-                foreach($postURL as $postURLKey => $postURLValue){
-                    do{
-                        /*if(is_array($postURLValue)){
-                            $check++;
-                            $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
-                        }
-                        else{
-                            $postURLValue = $postURL[$check];
-                            $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
-                            $check++;
-                        }*/
-                        if(!is_array($postURLValue))
-                            exit;
-                        $postURLValue =  implode("", $postURLValue);
-                        $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
-                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
-                        $xpath = create_dom($html);
-                        $textcontent = getTEXTContent($xpath);   //回傳文字陣列
-                        $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
-                        $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
-                        /*if(!$raw_data)
-                            $check--; */
-                    }while(!$raw_data);
-                    insertIndb($db, $raw_data);   //將資料存入資料庫
-                   
+                $login_url_p02_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchDesignDetial.do"; 
+                $login_url_p03_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchSupDetial.do";
+                foreach($postURL as $postURLValue){
+                
+                    if(preg_match('/(p02_code=)([\w]+)/', $postURLValue)){
+                        do{
+                            $design_data = array();
+                            $html = post($login_url_p02_for_postURL, $postURLValue, $cookie_file);
+                            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                            $design_data = getDesignContent($html);
+                        }while(!$design_data);
+                        array_push($arr_data_design, $design_data);
+                    }
+                    else{
+                        do{
+                            $supervise_data = array();
+                            $html = post($login_url_p03_for_postURL, $postURLValue, $cookie_file);
+                            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                            $supervise_data = getSuperviseContent($html);
+                        }while(!$supervise_data);   
+                        array_push($arr_data_supervise, $supervise_data);
+                    }
                 }
             }
             $i++;
-        }while($i<=$page);
+        }while($i<=5);
         
     }
-    
+    //$arr_total_data = $arr_data_design + $arr_data_supervise;
+    /*print_r($arr_total_data);*/
 }
+
+array_push($arr_total_data, $arr_data_design);
+array_push($arr_total_data, $arr_data_supervise);
+//print_r($arr_total_data);
+
+
+/***************************************query designer page*************************************************/
+echo "Start Insert Data......\n";
+
+$total_login_url_getID = "http://cpabm.cpami.gov.tw/search/bmg/queryArchInfo.jsp";
+$total_verify_code_url_getID = "http://cpabm.cpami.gov.tw/img_code.jsp";
+
+/*$cookie_file = "valid.tmp";   */ 
+$cookie_file = getCookie($total_verify_code_url_getID, $cookie_file, $timeout);
+$code = getCheckNumber($total_verify_code_url_getID, $cookie_file);  
+
+
+
+foreach($arr_total_data as $rowdata){
+
+    foreach($rowdata as $row){
+    
+        $total_data = array();
+
+        for($i = 0 ; $i < 3 ; $i ++){
+            array_push($total_data, $row[$i]);
+        }
+
+        $total_name = $row[0];
+        $total_post_name = encode($total_name);
+        //echo "name:".$total_name."\n";
+        $total_post_getID = "id_no_d21=&name_d21=$total_post_name&edu_level_d21=&capacity_get_d21=&job_d21=&insrand=$code";
+        //echo "post_getID:".$design_post_getID."\n";
+        $html = post($total_login_url_getID, $total_post_getID, $cookie_file);
+        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+        checkExpired($html, $total_verify_code_url_getID, $cookie_file, $timeout);
+        if($html){
+            $id = getID($html);
+            //echo $id."\n";
+            array_push($total_data, $id);
+        }
+        else{
+            echo "Query ID failed!!!\n";
+        }
+        //print_r($total_data);
+        insert_In_DB($db, $total_data);
+        //echo "\n";
+    }
+}  
+
+/***********************************************************************************************************/
+
+//print_r($arr_data_design);
 mysqli_close($db);
-if(unlink($file))
-    echo "成功刪除!!";
-else
-    echo "刪除失敗!!";
+
 
 exit;
 
 
-/*********************************************************************************************/
+
+
+/***********************************************************************************************************/
+
+function getSuperviseContent($str){
+    $html = str_get_html($str);
+
+    $arr_data = array();
+
+    if($html){
+        $table = $html->find('div[class=content4]' ,0);
+        if($table){
+            foreach($table->find('td.td') as $data){
+                array_push($arr_data, DeleteHtml($data->innertext));
+            }
+        }
+    }
+    array_splice($arr_data, 1, 3);
+
+    if(!strcmp($arr_data[1], "連結")){
+        $arr_data[1] = "http://cpabm.cpami.gov.tw/cers/pages/information/rewards.html";
+    }
+
+    return $arr_data;
+}
+
+//讀取資料並存入資料庫
+function insert_In_DB($db, $raw_data){
+    //主鍵設為contractor_name，不會有一直加入相同資料的問題
+    $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, outstanding_ann, punishment_ann) 
+    VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]')";
+    if(!mysqli_query($db , $sql)){  //插入失敗
+        if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
+            //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
+            $sql = "UPDATE `architect_information` SET `architect_name`= N'$raw_data[0]', `outstanding_ann`= N'$raw_data[1]', `punishment_ann`= N'$raw_data[2]' where `architect_ID`= N'$raw_data[3]'";
+            mysqli_query($db , $sql);
+            echo "Update: ".$raw_data[0]." complete<br>\n";
+        }   //
+        elseif(!mysql_ping($db)){
+            echo 'Lost connection\n';
+            mysql_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            dbConnect();
+            insert_Design_In_DB($db, $raw_data);
+        }
+        else{
+            echo "SQL Error: " . mysqli_error($db)."\n";
+            exit;
+        }
+    }
+    else    
+        echo "Insert: ".$raw_data[0]." complete<br>\n";
+    
+}
+
+
+//檢查驗證碼過期
+function checkExpired($str, $verify_code_url, $cookie_file, $timeout){
+    $html = str_get_html($str);
+    if($html){
+        $design_expired = $html->find('td[class=memo]');
+        $resume_expired = $html->find('font');
+        if($design_expired){
+            foreach($design_expired as $expired){
+                $expired = DeleteHtml($expired->innertext);
+                if(strpos($expired, "驗證碼輸入錯誤") !== false){
+                    echo "cookie expired reconnect...\n";
+                    $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
+                    $code = getCheckNumber($verify_code_url, $cookie_file);  
+                }
+            }
+        }
+        if($resume_expired){
+            foreach($resume_expired as $expired){
+                $expired = DeleteHtml($expired->innertext);
+                if(strpos($expired, "驗證碼錯誤") !== false){
+                    echo "cookie expired reconnect...\n";
+                    $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
+                    $code = getCheckNumber($verify_code_url, $cookie_file);  
+                }
+            }
+        }
+    }
+
+}
+
+//獲得建築師證號
+function getID($str){
+    $html = str_get_html($str);
+
+    $arr_id = array();
+
+    if($html){
+        $tr = $html->find('tr[class=list0]' ,0);
+        if($tr){
+            foreach($tr->find('td') as $data){
+                $data = DeleteHtml($data->innertext);
+                if(strpos($data, "建證字第") !== false){
+                    return $data;
+                }
+            }
+        }
+    }
+    
+}
+//獲得設計師資料
+function getDesignContent($str){
+    $html = str_get_html($str);
+
+    $arr_data = array(); 
+
+    if($html){
+        $table = $html->find('div[class=content4]' ,0);
+        if($table){
+            foreach($table->find('td.td') as $data){
+                array_push($arr_data, DeleteHtml($data->innertext));
+
+            }
+        }
+        
+    }
+    array_splice($arr_data, 1, 1); //不需要地址，array reindex
+    
+    if(!strcmp($arr_data[1], "連結")){
+        $arr_data[1] = "http://cpabm.cpami.gov.tw/cers/pages/information/rewards.html";
+    }
+    
+    /*echo $arr_data[1]."\n";*/
+    
+
+    return $arr_data;
+ 
+}
+//將名字轉乘big5並encode丟給post
+function encode($name){
+    $name = iconv("UTF-8", "Big5//IGNORE", $name);
+    $name = urlencode($name);
+    return $name;
+
+}
+
+//獲得設計師以及監造人連結
+function getURLContent($str){ 
+    $postURL = array();
+
+    $html = str_get_html($str);
+    if($html){
+        //尋找網頁中id=row的table
+        $table = $html->find('table[id=row]',0);    //第二參數表示:只取第一個表格
+        if($table){
+            foreach($table->find('a') as $a){
+                /*echo $a->href."\n";*/
+                $url = DeleteHtml($a->href);
+                if(preg_match('/([^?]+)(\?)(p02_code=)([\w]+)/',$url,$matches)){
+                    $postURL[]="{$matches[3]}{$matches[4]}";
+                }
+                elseif(preg_match('/([^?]+)(\?)(p03_code=)([\w]+)/',$url,$matches)){
+                    $postURL[]="{$matches[3]}{$matches[4]}";
+                }
+            }
+        }
+    }
+   
+   
+    return $postURL;  
+}
 
 //濾掉多餘的字元，好讓字串可以順利存入資料庫
 function DeleteHtml($str){
@@ -108,93 +326,21 @@ function DeleteHtml($str){
     $str = str_replace("\r","",$str); 
     $str = str_replace("\n","",$str); 
     $str = str_replace(" "," ",$str); 
-    return trim($str);
-}
-
-//讀取資料並存入資料庫
-function insertIndb($db, $raw_data){
-
-   //主鍵設為contractor_name，不會有一直加入相同資料的問題
-   $sql = "INSERT INTO `building_contractor` (Industry_name, contractor_name, registration_code, uniform_number, capital, address, award_punishment, evaluation_level, construction_assessment) 
-   VALUES (N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]', N'$raw_data[3]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]')";
-    if(!$db)
-        $db = dbConnect();
-    if(!mysqli_query($db , $sql)){  //插入失敗
-        if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){  //?
-            //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
-            $sql = "UPDATE `building_contractor` SET `Industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `uniform_number`= N'$raw_data[3]', `capital`= N'$raw_data[4]', 
-                    `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_name`= N'$raw_data[1]'";
-            mysqli_query($db , $sql);
-            echo "Update: ".$raw_data[0]." complete<br>\n";
-        }   
-        else{
-            echo "SQL Error: " . mysqli_error($db)."\n";
-            exit;
-        }
-    }
-    else    
-        echo "Insert: ".$raw_data[0]." complete<br>\n";
-    
-   
-}
-
-//將原字串"連結"替換成的url並存入原陣列
-function match($textcontent, $urlcontent){
-    $urlkey = 0;
-    foreach($textcontent as $textkey => $content){
-        if(!strcmp($content, "連結")){
-            $textcontent[$textkey] = $urlcontent[$urlkey];
-            $urlkey++;
-        }
-    }
-    return $textcontent;
-}
-
-//回傳下一層的連結
-function getTEXTContentWithURL($xpath){
-    $urlcontent = array();
-    foreach($xpath->query('//td[@class="td"]//@href') as $rowIdx=> $textnode){
-        array_push($urlcontent, DeleteHtml($textnode->textContent));
-    }
-    return $urlcontent;
-}
-
-
-//回傳文字陣列
-function getTEXTContent($xpath){
-    $textcontent = array();
-    foreach($xpath->query('//td[@class="td"]') as $rowIdx=> $textnode){
-        array_push($textcontent, DeleteHtml($textnode->textContent));
-    }
-    return $textcontent;
+    return $str;
 }
 
 //連接資料庫
 function dbConnect(){
     $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
+    /*$db = mysqli_connect("10.21.100.7", "root", "", "building",53306);*/
     if(!$db){
-        die("dbConnect fail". mysqli_connect_error());
+        die("dbConnect fail". mysqli_connect_error()."\n");
         exit;
     }
     else{
-        echo "dbConnect Successful!!<br>";
+        echo "dbConnect Successful!!<br>\n";
         return $db;    
     }
-}
-
-//取得網頁中表格內容並寫入相對應的文件
-function getURLContent($xpath){ 
-    $postURL = array();
-    foreach($xpath->query('//div[@class="content2"]//tr//@href') as $rowIdx=> $urlnode){
-        $url = DeleteHtml($urlnode->childNodes[0]->textContent);
-        if(strpos ($url, "p04")){
-
-            $url = str_split($url, 1); //分割成1個字元存入陣列
-            $url = array_splice($url, 26);
-            array_push($postURL, $url);
-        }       
-    }
-    return $postURL;  
 }
 
 //取得session
@@ -224,7 +370,7 @@ function post($url, $post, $cookie_file){
 }
 
 //取出驗證碼
-function getCheckNumber($image_url, $cookie_file, $file){
+function getCheckNumber($image_url, $cookie_file){
     
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $image_url);
@@ -240,12 +386,21 @@ function getCheckNumber($image_url, $cookie_file, $file){
     fclose($fp);
     //初始化
     $code = FALSE;
-    
-    $code = "";    
-    fopen("{$file}", "w");
-    do{
-        $code = file_get_contents($file);
-    }while($code == FALSE);
+    $code = "";
+    if(1){
+        echo "wait for code:\n";
+        do{
+            $handle = fopen ("php://stdin","r");
+            $code = fgets($handle);
+            fclose($handle);
+        }while($code == FALSE);
+        echo "enter complete\n";
+    }
+    else{
+        passthru("imgcat valid.jpg");
+        $code=readline("code:");
+    }
+    $code = DeleteHtml($code);
     return $code;
 }
 
@@ -269,7 +424,7 @@ function getpage($xpath, $data_Digits, $page){
         return $page;
     }
 }
-
+  
 function create_dom($html){
     $dom = new DOMDocument;
     $encoding = mb_detect_encoding($html);
@@ -278,6 +433,5 @@ function create_dom($html){
     $xpath =new DOMXpath($dom);
     return $xpath;
 }
- 
   
 ?>
