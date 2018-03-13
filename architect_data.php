@@ -19,17 +19,17 @@ $arr_total_data = array();   //結合設計人以及監造人資訊
 
 #可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
                     "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                     "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20"*/);
-$year = array("0"=>"100"/*, "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107"*/);
+"金門縣"=>"J20");
+$year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107");
 
 /**************************************main***************************************************************/
 
 $db = dbConnect();
 
-/*$cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
+$cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
 $code = getCheckNumber($verify_code_url, $cookie_file);
 
 
@@ -86,7 +86,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                 }
             }
             $i++;
-        }while($i<=5);
+        }while($i<=$page);
         
     }
 
@@ -96,7 +96,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 array_push($arr_total_data, $arr_data_design);
 array_push($arr_total_data, $arr_data_supervise);
 
-exit;*/
+
 
 /***************************************Insert data*************************************************/
 
@@ -118,7 +118,7 @@ $code = getCheckNumber($info_verify_code_url, $cookie_file);
 
 echo "Start Insert Data......\n";
 
-/*foreach($arr_total_data as $rowdata){
+foreach($arr_total_data as $rowdata){
 
     foreach($rowdata as $row){
     
@@ -151,8 +151,8 @@ echo "Start Insert Data......\n";
       
     }
 }  
-exit;
-*/
+
+
 /**************************************************update data****************************************************/
 
 echo "Start Update Data......\n";
@@ -369,6 +369,8 @@ function getinfopage($str){
 function getSuperviseContent($str){
     $html = str_get_html($str);
 
+    
+
     $arr_data = array();
 
     if($html){
@@ -380,10 +382,15 @@ function getSuperviseContent($str){
         }
     }
     array_splice($arr_data, 1, 3);
-
-    if(!strcmp($arr_data[1], "連結")){
+    if(!$arr_data[1] || !$arr_data){
+        echo "Lost data!!\n";
+        return 0;
+    }
+    else if(!strcmp($arr_data[1], "連結")){
         $arr_data[1] = "http://cpabm.cpami.gov.tw/cers/pages/information/rewards.html";
     }
+    
+
 
     return $arr_data;
 }
@@ -478,8 +485,9 @@ function getID($str){
 function getDesignContent($str){
     $html = str_get_html($str);
 
-    $arr_data = array(); 
-
+     
+    
+    $arr_data = array();
     if($html){
         $table = $html->find('div[class=content4]' ,0);
         if($table){
@@ -492,10 +500,15 @@ function getDesignContent($str){
     }
     array_splice($arr_data, 1, 1); //不需要地址，array reindex
     
-    if(!strcmp($arr_data[1], "連結")){
+    if(!$arr_data[1] || !$arr_data){
+        echo "Lost data!!\n";
+        return 0;
+    }
+
+    elseif(!strcmp($arr_data[1], "連結")){
         $arr_data[1] = "http://cpabm.cpami.gov.tw/cers/pages/information/rewards.html";
     }
-    
+     
     /*echo $arr_data[1]."\n";*/
     
 
