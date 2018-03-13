@@ -240,7 +240,7 @@ function update_info_DB($db, $array_data, $classification){
                     echo 'Lost connection\n';
                     mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
                     $db = dbConnect();
-                    insert_Design_In_DB($db, $raw_data);
+                    update_info_DB($db, $array_data, $classification);
                 }
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
@@ -269,7 +269,7 @@ function update_info_DB($db, $array_data, $classification){
                     echo 'Lost connection\n';
                     mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
                     $db = dbConnect();
-                    insert_Design_In_DB($db, $raw_data);
+                    update_info_DB($db, $array_data, $classification);
                 }
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
@@ -298,7 +298,7 @@ function update_info_DB($db, $array_data, $classification){
                     echo 'Lost connection\n';
                     mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
                     $db = dbConnect();
-                    insert_Design_In_DB($db, $raw_data);
+                    update_info_DB($db, $array_data, $classification);
                 }
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
