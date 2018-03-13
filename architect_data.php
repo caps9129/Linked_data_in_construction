@@ -38,20 +38,20 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
     foreach($year as $yearKey => $yearValue){   //跑年度
         $i=1;
         do{
+            do{
+                $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
+            
+                $html = post($login_url, $post, $cookie_file);
 
-            $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
-        
-            $html = post($login_url, $post, $cookie_file);
+                $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
-            $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-           
-            checkExpired($html, $verify_code_url, $cookie_file, $timeout);
+            }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
 
             $xpath = create_dom($html);
 
             if($i == 1){    //只要第一次拿到頁數就好了~~
                 $page = getpage($xpath, $data_Digits, $page);
-                /*echo "PAGE:".$page."<br>\n";/**/
+              
             }
 
             
@@ -71,7 +71,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             $html = post($login_url_p02_for_postURL, $postURLValue, $cookie_file);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
                             $design_data = getDesignContent($html);
-                        }while(!$design_data);
+                        }while(!$design_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code)); //不確定能不能檢查出來這裡的過期
                         array_push($arr_data_design, $design_data);
                     }
                     else{
@@ -80,7 +80,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             $html = post($login_url_p03_for_postURL, $postURLValue, $cookie_file);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
                             $supervise_data = getSuperviseContent($html);
-                        }while(!$supervise_data);   
+                        }while(!$supervise_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code));   
                         array_push($arr_data_supervise, $supervise_data);
                     }
                 }
@@ -89,25 +89,24 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
         }while($i<=5);
         
     }
-    //$arr_total_data = $arr_data_design + $arr_data_supervise;
-    /*print_r($arr_total_data);*/
+
 }
 
 array_push($arr_total_data, $arr_data_design);
 array_push($arr_total_data, $arr_data_supervise);
 //print_r($arr_total_data);
+//exit;
 
-
-/***************************************query designer page*************************************************/
+/***************************************Insert data*************************************************/
 echo "Start Insert Data......\n";
 
-$total_login_url_getID = "http://cpabm.cpami.gov.tw/search/bmg/queryArchInfo.jsp";
-$total_verify_code_url_getID = "http://cpabm.cpami.gov.tw/img_code.jsp";
+$info_login_url = "http://cpabm.cpami.gov.tw/search/bmg/queryArchInfo.jsp";
+$info_verify_code_url = "http://cpabm.cpami.gov.tw/img_code.jsp";
 
 /*$cookie_file = "valid.tmp";   */ 
-$cookie_file = getCookie($total_verify_code_url_getID, $cookie_file, $timeout);
-$code = getCheckNumber($total_verify_code_url_getID, $cookie_file);  
-
+$cookie_file = getCookie($info_verify_code_url, $cookie_file, $timeout);
+$code = getCheckNumber($info_verify_code_url, $cookie_file);  
+$info_page = 1;
 
 
 foreach($arr_total_data as $rowdata){
@@ -123,11 +122,14 @@ foreach($arr_total_data as $rowdata){
         $total_name = $row[0];
         $total_post_name = encode($total_name);
         //echo "name:".$total_name."\n";
-        $total_post_getID = "id_no_d21=&name_d21=$total_post_name&edu_level_d21=&capacity_get_d21=&job_d21=&insrand=$code";
+        do{
+            $total_post_getID = "id_no_d21=&name_d21=$total_post_name&edu_level_d21=&capacity_get_d21=&job_d21=&insrand=$code";
         //echo "post_getID:".$design_post_getID."\n";
-        $html = post($total_login_url_getID, $total_post_getID, $cookie_file);
-        $html = iconv("Big5", "UTF-8//IGNORE", $html);
-        checkExpired($html, $total_verify_code_url_getID, $cookie_file, $timeout);
+        
+            $html = post($info_login_url, $total_post_getID, $cookie_file);
+            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code));
+        
         if($html){
             $id = getID($html);
             //echo $id."\n";
@@ -141,19 +143,84 @@ foreach($arr_total_data as $rowdata){
         //echo "\n";
     }
 }  
+exit;
 
-/***********************************************************************************************************/
+/**************************************************update data****************************************************/
+echo "Start Update Data......\n";
 
+/*****************education*****************/
+$education_level = array("博士"=>"00"/*, "碩士"=>"01", "學士"=>"02", "專科"=>"03", "高中"=>"04", "國中"=>"05", "國小"=>"06"*/);
+foreach($education_level as $education_key => $education_value){
+    $i = 1;
+    do{
+        do{
+            $education_post = "id_no_d21=&name_d21=&showRows=15&edu_level_d21=$education_value&capacity_get_d21=&job_d21=&insrand=$code&pageNo=$i";
+            echo $education_post."\n";
+            $html = post($info_login_url, $education_post, $cookie_file);
+            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+            echo $html;
+        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code));
+        
+        if($i == 1){
+            $info_page = getinfopage($html);
+        }
+
+        getinformation($html, $education_key);
+        
+
+        $i++;
+    }while($i <= $info_page);
+}
 //print_r($arr_data_design);
-mysqli_close($db);
+//mysqli_close($db);
 
 
 exit;
 
 
-
+/********************************************/
 
 /***********************************************************************************************************/
+
+function getinformation($str, $key){
+
+    $html = str_get_html($str);
+    if($html){
+        $table = $html->find('table', 2);
+        /*$tr = $table->find('tr');
+        $td = $tr->find('td', 2);*/
+        foreach($table->find('tr') as $tr){
+            foreach($tr->find('td') as $tdvalue){
+                $ID = DeleteHtml($tdvalue->innertext);
+                if(strpos($ID, "建證字第") !== false){
+                    //echo $ID.$key."\n";
+                }
+                    
+            }
+        }
+    }
+
+}
+
+//取得建築師登記頁面頁數
+function getinfopage($str){
+    
+    $html = str_get_html($str);
+    $info_page = 0;
+
+    if($html){
+        $td = $html->find('select[name=pageNo]', 0);
+        if($td){
+            foreach($td->find('option') as $tdvalue){
+                if($tdvalue){
+                    $temp = DeleteHtml($tdvalue->value);
+                    $info_page = $temp;
+                }
+            }
+        }
+    }
+    return $info_page;
+}
 
 function getSuperviseContent($str){
     $html = str_get_html($str);
@@ -207,7 +274,7 @@ function insert_In_DB($db, $raw_data){
 
 
 //檢查驗證碼過期
-function checkExpired($str, $verify_code_url, $cookie_file, $timeout){
+function checkExpired($str, $verify_code_url, $cookie_file, $timeout, &$code){
     $html = str_get_html($str);
     if($html){
         $design_expired = $html->find('td[class=memo]');
@@ -216,23 +283,30 @@ function checkExpired($str, $verify_code_url, $cookie_file, $timeout){
             foreach($design_expired as $expired){
                 $expired = DeleteHtml($expired->innertext);
                 if(strpos($expired, "驗證碼輸入錯誤") !== false){
-                    echo "cookie expired reconnect...\n";
+                    echo "cookie expired reconnect...1\n";
                     $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
                     $code = getCheckNumber($verify_code_url, $cookie_file);  
+                    return 1;
                 }
             }
+            
         }
         if($resume_expired){
             foreach($resume_expired as $expired){
                 $expired = DeleteHtml($expired->innertext);
                 if(strpos($expired, "驗證碼錯誤") !== false){
-                    echo "cookie expired reconnect...\n";
+                    echo "cookie expired reconnect...2\n";
                     $cookie_file = getCookie($verify_code_url, $cookie_file, $timeout);
-                    $code = getCheckNumber($verify_code_url, $cookie_file);  
+                    $code = getCheckNumber($verify_code_url, $cookie_file); 
+                    return 1; 
                 }
-            }
+            }    
         }
+        return 0; 
+          
     }
+    return 1; 
+ 
 
 }
 
