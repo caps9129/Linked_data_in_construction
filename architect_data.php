@@ -19,10 +19,10 @@ $arr_total_data = array();   //結合設計人以及監造人資訊
 
 #可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
                     "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                     "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20");
+"金門縣"=>"J20"*/);
 $year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107");
 
 /**************************************main***************************************************************/
@@ -47,7 +47,10 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 
                 $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
-            }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+                if(!$html)
+                    echo "Lost resume page!!\n";
+
+            }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
 
             $xpath = create_dom($html);
 
@@ -70,8 +73,13 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             $design_data = array();
                             $html = post($login_url_p02_for_postURL, $postURLValue, $cookie_file);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
-                            $design_data = getDesignContent($html);         //取得設計人資訊
-                        }while(!$design_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code)); //不確定能不能檢查出來這裡的過期
+                            if(!$html)
+                                echo "Lost html\n";
+                            else{   
+                                $design_data = getDesignContent($html);         //取得設計人資訊
+                                print_r($design_data);
+                            }
+                        }while(!$design_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html); //不確定能不能檢查出來這裡的過期
                         array_push($arr_data_design, $design_data);
                     }
                     else{                                                   //監造人連結
@@ -79,8 +87,13 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             $supervise_data = array();
                             $html = post($login_url_p03_for_postURL, $postURLValue, $cookie_file);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
-                            $supervise_data = getSuperviseContent($html);   //取得監造人資訊
-                        }while(!$supervise_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code));   
+                            if(!$html)
+                                echo "Lost html\n";
+                            else{  
+                                $supervise_data = getSuperviseContent($html);   //取得監造人資訊
+                                print_r($supervise_data);
+                            }
+                        }while(!$supervise_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);   
                         array_push($arr_data_supervise, $supervise_data);
                     }
                 }
@@ -136,7 +149,11 @@ foreach($arr_total_data as $rowdata){
         
             $html = post($info_login_url, $total_post_getID, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
-        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code));  //檢查SESSION過期
+
+            if(!$html)
+                echo "Lost profile page\n";
+
+        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code) || !$html);  //檢查SESSION過期
         
         if($html){
             $id = getID($html); //透過名字取得ID
@@ -147,7 +164,7 @@ foreach($arr_total_data as $rowdata){
             echo "Query ID failed!!!\n";
         }
       
-        insert_In_DB($db, $total_data);     //存進資料庫
+        $fp = insert_In_DB($db, $total_data, $fp);     //存進資料庫
       
     }
 }  
@@ -376,13 +393,20 @@ function getSuperviseContent($str){
     if($html){
         $table = $html->find('div[class=content4]' ,0);
         if($table){
-            foreach($table->find('td.td') as $data){
-                array_push($arr_data, DeleteHtml($data->innertext));
+            foreach($table->find('td.td') as $row_data){
+                $data = trim(DeleteHtml($row_data->innertext));
+                if($data){
+                    array_push($arr_data, $data);
+                }
+                else{
+                    $error = "lost data";
+                    array_push($arr_data, $error);
+                }
             }
         }
     }
     array_splice($arr_data, 1, 3);
-    if(!$arr_data[1] || !$arr_data){
+    if(!$arr_data){
         echo "Lost data!!\n";
         return 0;
     }
@@ -396,7 +420,7 @@ function getSuperviseContent($str){
 }
 
 //讀取資料並存入資料庫
-function insert_In_DB($db, $raw_data){
+function insert_In_DB($db, $raw_data, $fp){
 
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
     $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, outstanding_ann, punishment_ann) 
@@ -408,15 +432,18 @@ function insert_In_DB($db, $raw_data){
             mysqli_query($db , $sql);
             echo "Update: ".$raw_data[0]." complete<br>\n";
         }   //
-        elseif(!mysql_ping($db)){
+        elseif(!mysqli_ping($db)){
             echo 'Lost connection\n';
-            mysql_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
             $db = dbConnect();
-            insert_Design_In_DB($db, $raw_data);
+            insert_In_DB($db, $raw_data);
         }
         else{
             echo "SQL Error: " . mysqli_error($db)."\n";
-            exit;
+            $fp = fopen("log.txt","w");
+            fwrite($fp, $raw_data[3].$raw_data[0].$raw_data[1].$raw_data[2].PHP_EOL);
+            return $fp;
+            //exit;
         }
     }
     else    
@@ -483,16 +510,24 @@ function getID($str){
 }
 //獲得設計師資料
 function getDesignContent($str){
-    $html = str_get_html($str);
-
-     
     
+    $html = str_get_html($str);
     $arr_data = array();
+
     if($html){
         $table = $html->find('div[class=content4]' ,0);
         if($table){
-            foreach($table->find('td.td') as $data){
-                array_push($arr_data, DeleteHtml($data->innertext));
+            foreach($table->find('td.td') as $row_data){
+
+                $data = trim(DeleteHtml($row_data->innertext));
+                
+                if($data){
+                    array_push($arr_data, $data);
+                }
+                else{
+                    $error = "lost data";
+                    array_push($arr_data, $error);
+                }
 
             }
         }
@@ -500,7 +535,7 @@ function getDesignContent($str){
     }
     array_splice($arr_data, 1, 1); //不需要地址，array reindex
     
-    if(!$arr_data[1] || !$arr_data){
+    if(!$arr_data){
         echo "Lost data!!\n";
         return 0;
     }
