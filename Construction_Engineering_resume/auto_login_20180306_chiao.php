@@ -1,10 +1,10 @@
 <?php
-ini_set('max_execution_time', '0');
+/*ni_set('max_execution_time', '0');
 ini_set("memory_limit","8192M");
 
 ini_set('error_reporting', E_ALL | E_STRICT);
 ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_startup_errors', 1);*/
 
 include_once(__DIR__."/simple_html_dom.php");
 
@@ -36,9 +36,7 @@ $code = getCheckNumber($verify_code_url, $cookie_file, $file);
 $db = dbConnect();
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
 foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
-    echo "countycodeKey: ".$countycodeKey."<br>\n";
     foreach($year as $yearKey => $yearValue){   //跑年度
-        echo "yearValue: ".$yearValue."<br>\n";
         $i=1;
         do{
 
@@ -59,28 +57,24 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 
             echo "page: {$countycodeKey} | {$yearValue} | {$i}/{$page}<br>\n";
 
-            $postURL = getURLContent($xpath);   //獲取往下一層的連結
-            //$postURL = getURLContent2($html);   //獲取往下一層的連結
+            //$postURL = getURLContent($xpath);   //獲取往下一層的連結
+            $postURL = getURLContent2($html);   //獲取往下一層的連結
 
             if($postURL){
-
+        
                 $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
                 foreach($postURL as $postURLKey => $postURLValue){
-                    //file_put_contents("1.html", $html);
-                    //exit;
-                    $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
-
-
-                    echo "postURLValue: {$postURLValue}\n";
-
-                    $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
-                    $html = iconv("Big5", "UTF-8//IGNORE", $html);
-                    $xpath = create_dom($html);
-                    $textcontent = getTEXTContent($xpath);   //回傳文字陣列
-                    $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
-                    $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
-                    //echo "raw_data: ".print_r($raw_data,1);
+                    do{
+                        $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
+                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        $xpath = create_dom($html);
+                        $textcontent = getTEXTContent($xpath);   //回傳文字陣列
+                        $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
+                        $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
+                    }while(!$raw_data);
+                  
                     insertIndb($db, $raw_data);   //將資料存入資料庫
+
                 }
             }
             $i++;
@@ -125,6 +119,12 @@ function insertIndb($db, $raw_data){
             mysqli_query($db , $sql);
             echo "Update: ".$raw_data[0]." complete<br>\n";
         }   //
+        /*elseif(!mysqli_ping($db)){
+            echo 'Lost connection\n';
+            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            dbConnect();
+            insertIndb($db, $raw_data);
+        }*/
         else{
             echo "SQL Error: " . mysqli_error($db)."\n";
             exit;
@@ -171,7 +171,7 @@ function dbConnect(){
     $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
     /*$db = mysqli_connect("10.21.100.7", "root", "", "building",53306);*/
     if(!$db){
-        die("dbConnect fail". mysqli_connect_error());
+        die("dbConnect fail". mysqli_connect_error()."\n");
         exit;
     }
     else{
@@ -188,6 +188,8 @@ function getURLContent($xpath){
         if(strpos ($url, "p04")){
             $url = str_split($url, 1); //分割成1個字元存入陣列
             $url = array_splice($url, 26);
+            $postURLValue =  implode("", $postURLValue);
+            
             array_push($postURL, $url);
         }       
     }
@@ -203,7 +205,7 @@ function getURLContent2($str){
         $table = $html->find('table[id=row]',0);    //第二參數表示:只取第一個表格
         if($table){
             foreach($table->find('a') as $a){
-                $url=$a->href;
+                $url = DeleteHtml($a->href);
                 if(preg_match('/([^?]+)(\?)(p04_id=)([\w]+)/',$url,$matches)){
                     /*
                     在 $url="/cers/SearchContDetial.do?p04_id=A05069"; 的情況下

@@ -1,6 +1,4 @@
 <?php
-ini_set('max_execution_time', '0');
-ini_set("memory_limit","8192M");
 include_once(__DIR__."/simple_html_dom.php");
 //初始化變量
 
@@ -66,9 +64,6 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
                             $check++;
                         }
-                        /*if(!is_array($postURLValue))
-                            exit;
-                        $postURLValue =  implode("", $postURLValue);*/
                         $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
                         $xpath = create_dom($html);
@@ -117,8 +112,8 @@ function insertIndb($db, $raw_data){
    //主鍵設為contractor_name，不會有一直加入相同資料的問題
    $sql = "INSERT INTO `building_contractor` (Industry_name, contractor_name, registration_code, uniform_number, capital, address, award_punishment, evaluation_level, construction_assessment) 
    VALUES (N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]', N'$raw_data[3]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]')";
-    if(!$db)
-        $db = dbConnect();
+    /*if(!$db)
+        $db = dbConnect();*/
     if(!mysqli_query($db , $sql)){  //插入失敗
         if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){  //?
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
@@ -127,6 +122,13 @@ function insertIndb($db, $raw_data){
             mysqli_query($db , $sql);
             echo "Update: ".$raw_data[0]." complete<br>\n";
         }   
+        elseif(!mysql_ping($db)){
+            echo 'Lost connection\n';
+            mysql_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            dbConnect();
+            insertIndb($db, $raw_data);
+        }
+        /*重新連線*/ 
         else{
             echo "SQL Error: " . mysqli_error($db)."\n";
             exit;
@@ -173,11 +175,11 @@ function getTEXTContent($xpath){
 function dbConnect(){
     $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
     if(!$db){
-        die("dbConnect fail". mysqli_connect_error());
+        die("dbConnect fail". mysqli_connect_error()."\n");
         exit;
     }
     else{
-        echo "dbConnect Successful!!<br>";
+        echo "dbConnect Successful!!<br>\n";
         return $db;    
     }
 }
@@ -191,6 +193,7 @@ function getURLContent($xpath){
 
             $url = str_split($url, 1); //分割成1個字元存入陣列
             $url = array_splice($url, 26);
+            /*$postURLValue =  implode("", $url);*/
             array_push($postURL, $url);
         }       
     }
