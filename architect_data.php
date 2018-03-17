@@ -15,14 +15,14 @@ $page = 1;   //傳入與取得頁數(設為"1"是為了在迴圈跑動第一次�
 $arr_data_design = array();   //設計人資訊
 $arr_data_supervise = array();   //監造人資訊
 $arr_total_data = array();   //結合設計人以及監造人資訊
-
+$fp_ID = "";
 
 #可手動設定以下兩個陣列決定撈取的縣市以及年度
 $countycode = array();
-$countycode = array("台北市"=>"G00"/*, "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
+$countycode = array("台北市"=>"G00", "高雄市"=>"H00", "基隆市"=>"I10","宜蘭縣"=>"I20", "新北市"=>"I30", "桃園市"=>"I40", "新竹市"=>"I50",  
                     "新竹縣"=>"I60", "苗栗縣"=>"I70", "台中市"=>"I80", "彰化縣"=>"IA0","南投縣"=>"IB0", "雲林縣"=>"IC0", "嘉義市"=>"ID0",
                     "嘉義縣"=>"IE0", "台南市"=>"IF0", "屏東縣"=>"II0", "花蓮縣"=>"IJ0","台東縣"=>"IK0", "澎湖縣"=>"IL0", "連江縣"=>"J10",
-"金門縣"=>"J20"*/);
+"金門縣"=>"J20");
 $year = array("0"=>"100", "1"=>"101", "2"=>"102", "3"=>"103", "4"=>"104", "5"=>"105", "6"=>"106", "7"=>"107");
 
 /**************************************main***************************************************************/
@@ -127,7 +127,7 @@ $job = array("開業"=>"1", "專業工程人員"=>"2", "公務員"=>"3", "教授
 
 
 $cookie_file = getCookie($info_verify_code_url, $cookie_file, $timeout);
-$code = getCheckNumber($info_verify_code_url, $cookie_file);  
+$code = getCheckNumber($info_verify_code_url, $cookie_file);
 
 echo "Start Insert Data......\n";
 
@@ -155,16 +155,23 @@ foreach($arr_total_data as $rowdata){
 
         }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code) || !$html);  //檢查SESSION過期
         
-        if($html){
-            $id = getID($html); //透過名字取得ID
+        $id = getID($html); //透過名字取得ID
+        
+        if($id){
             
             array_push($total_data, $id);   //$total_data[name][outstanding][punishment][ID]
+            insert_In_DB($db, $total_data, $fp);     //存進資料庫 UNDEFINED VARIABLE
+
         }
         else{
+            if(!$fp_ID){
+                $fp_ID = fopen("No_match_ID.txt","w");
+            }
+            fwrite($fp_ID, $total_data[0].",".$total_data[1].",".$total_data[2].PHP_EOL);
             echo "Query ID failed!!!\n";
         }
       
-        $fp = insert_In_DB($db, $total_data, $fp);     //存進資料庫
+        
       
     }
 }  
@@ -178,7 +185,7 @@ echo "Start Update Data......\n";
 
 array_push($arr_update_data, $education_level);
 array_push($arr_update_data, $capacity_get);
-array_push($arr_update_data, $job);   
+array_push($arr_update_data, $job);  
 
 
 //2D array => [0][edu] , [1][cap] , [2][job]
@@ -212,7 +219,13 @@ foreach($arr_update_data as $update_data_key => $update_data_value){
             $html = post($info_login_url, $post, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
             
-        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code)); //檢查session過期
+            if(!$html){
+                echo "Lost update page\n";
+            }
+
+
+
+        }while(checkExpired($html, $info_verify_code_url, $cookie_file, $timeout, $code) || !$html); //檢查session過期
         
         if($i == 1){
             $info_page = getinfopage($html);    //取得頁數
@@ -220,10 +233,10 @@ foreach($arr_update_data as $update_data_key => $update_data_value){
 
         echo "page: {$data_key} | {$i}/{$info_page}<br>\n";
 
-        $array_data = getinformation($html, $data_key); //取得[ID]=>職業/執照/教育
-        
+        $array_data = getinformation($html); //取得[ID]=>[職業/執照/教育][姓名]
+     
         if($array_data){
-            update_info_DB($db, $array_data, $update_data_key); //存入資料庫
+            update_info_DB($db, $array_data, $update_data_key, $data_key); //存入資料庫
         }
 
         $i++;
@@ -240,24 +253,33 @@ exit;
 /***********************************************************************************************************/
 
 //更新建築師細部資訊
-function update_info_DB($db, $array_data, $classification){
+function update_info_DB(&$db, $array_data, $classification, $key){     //$key = 教育程度/職業/執照
+    
+    
     //更新教育
     if($classification == 0){
-        foreach($array_data as $ID => $education){
+        foreach($array_data as $ID => $name){
             
-            $sql = "INSERT INTO `architect_information` (architect_ID, education_level) VALUES (N'$ID', N'$education')";
+            if(!mysqli_ping($db)){
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = dbConnect();
+                update_info_DB($db, $array_data, $classification, $key);
+            }
+            
+            $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, education_level) VALUES (N'$ID', N'$name', N'$key')";
+
+            //echo $sql."\n";
 
             if(!mysqli_query($db , $sql)){
                 if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
-                    $sql = "UPDATE `architect_information` SET `education_level`= N'$education' where `architect_ID`= N'$ID'"; 
-                    mysqli_query($db , $sql);
-                    echo "Update: ".$ID." complete<br>\n";     
-                }
-                elseif(!mysqli_ping($db)){
-                    echo 'Lost connection\n';
-                    mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-                    $db = dbConnect();
-                    update_info_DB($db, $array_data, $classification);
+                    $sql = "UPDATE `architect_information` SET `architect_name`= N'$name', `education_level`= N'$key' where `architect_ID`= N'$ID'"; 
+                    if(mysqli_query($db , $sql)){
+                        echo "Update: ".$ID." complete<br>\n";
+                    }
+                    else{
+                        update_info_DB($db, $array_data, $classification, $key);
+                    }   
                 }
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
@@ -272,21 +294,29 @@ function update_info_DB($db, $array_data, $classification){
     }
     //更新執照
     elseif($classification == 1){
-        foreach($array_data as $ID => $capacity){
+        foreach($array_data as $ID => $name){
 
-            $sql = "INSERT INTO `architect_information` (architect_ID, 	qualification_method) VALUES (N'$ID', N'$capacity')";
+            if(!mysqli_ping($db)){
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = dbConnect();
+                update_info_DB($db, $array_data, $classification, $key);
+            }
+
+            $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, qualification_method) VALUES (N'$ID', N'$name', N'$key')";
             
+            //echo $sql."\n";
+
             if(!mysqli_query($db , $sql)){
+                
                 if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
-                    $sql = "UPDATE `architect_information` SET `qualification_method`= N'$capacity' where `architect_ID`= N'$ID'"; 
-                    mysqli_query($db , $sql);
-                    echo "Update: ".$ID." complete<br>\n";     
-                }
-                elseif(!mysqli_ping($db)){
-                    echo 'Lost connection\n';
-                    mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-                    $db = dbConnect();
-                    update_info_DB($db, $array_data, $classification);
+                    $sql = "UPDATE `architect_information` SET `architect_name`= N'$name', `qualification_method`= N'$key' where `architect_ID`= N'$ID'"; 
+                    if(mysqli_query($db , $sql)){
+                        echo "Update: ".$ID." complete<br>\n";  
+                    }   
+                    else{
+                        update_info_DB($db, $array_data, $classification, $key);
+                    }
                 }
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
@@ -301,22 +331,32 @@ function update_info_DB($db, $array_data, $classification){
     }
     //更新職業
     elseif($classification == 2){
-        foreach($array_data as $ID => $job){
+        foreach($array_data as $ID => $name){
 
-            $sql = "INSERT INTO `architect_information` (architect_ID, 	practice_situation) VALUES (N'$ID', N'$job')";
+            if(!mysqli_ping($db)){
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = dbConnect();
+                update_info_DB($db, $array_data, $classification, $key);
+            }
+           
+            $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, practice_situation) VALUES (N'$ID', N'$name', N'$key')";
             
+            //echo $sql."\n";
+
             if(!mysqli_query($db , $sql)){
+                
+                
                 if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
-                    $sql = "UPDATE `architect_information` SET `practice_situation`= N'$job' where `architect_ID`= N'$ID'"; 
-                    mysqli_query($db , $sql);
-                    echo "Update: ".$ID." complete<br>\n";     
+                    $sql = "UPDATE `architect_information` SET `architect_name`= N'$name', `practice_situation`= N'$key' where `architect_ID`= N'$ID'"; 
+                    if(mysqli_query($db , $sql)){
+                        echo "Update: ".$ID." complete<br>\n"; 
+                    }   
+                    else{
+                        update_info_DB($db, $array_data, $classification, $key);
+                    } 
                 }
-                elseif(!mysqli_ping($db)){
-                    echo 'Lost connection\n';
-                    mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-                    $db = dbConnect();
-                    update_info_DB($db, $array_data, $classification);
-                }
+                
                 else{
                     echo "SQL Error: " . mysqli_error($db)."\n";
                     exit;
@@ -331,32 +371,41 @@ function update_info_DB($db, $array_data, $classification){
 }
 
 //取得建築師資訊對應建照
-function getinformation($str, $key){
+function getinformation($str){
 
     $array_ID = array();
     $array_value = array();
     $array_data = array();
+    
+    
 
     $html = str_get_html($str);
     if($html){
         $table = $html->find('table', 2);
 
         foreach($table->find('tr') as $tr){
+            $index = 0;
             foreach($tr->find('td') as $tdvalue){
-                $ID = DeleteHtml($tdvalue->innertext);
-                if(strpos($ID, "建證字第") !== false){
-                    
-                    array_push($array_ID, $ID);
 
-                    array_push($array_value, $key);
-                    
+                $text = trim(DeleteHtml($tdvalue->innertext));
+
+                if($index == 1 && strcmp($text, "建築師姓名") !== 0){
+                    //echo $text."\n";
+                    array_push($array_value, $text);
                 }
+
+                if($index == 2 && strcmp($text, "建築師證書字號") !== 0){
                     
+                    array_push($array_ID, $text);
+                
+                }
+                $index++;    
             }
         }
     }
 
     $array_data = array_combine($array_ID, $array_value);
+    /*print_r($array_data);*/
     
     return $array_data;
 
@@ -419,30 +468,53 @@ function getSuperviseContent($str){
     return $arr_data;
 }
 
-//讀取資料並存入資料庫
-function insert_In_DB($db, $raw_data, $fp){
+/*function reconnect(&$db, $raw_data, $fp){
+    if(!mysqli_ping($db)){
+        echo 'Lost connection\n';
+        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+        $db = dbConnect();
+        insert_In_DB($db, $raw_data, $fp);  
+    }
+}*/
 
+//讀取資料並存入資料庫
+function insert_In_DB(&$db, $raw_data, &$fp){
+
+    if(!$fp){
+        $fp = fopen("SQL_Error.txt","w");
+    }
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
     $sql = "INSERT INTO `architect_information` (architect_ID, architect_name, outstanding_ann, punishment_ann) 
     VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]')";
+
+    echo $sql."\n";
+                
+    if(!mysqli_ping($db)){ 
+        echo 'Lost connection\n';
+        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+        $db = dbConnect();
+        insert_In_DB($db, $raw_data, $fp); 
+    }
+    
     if(!mysqli_query($db , $sql)){  //插入失敗
+
         if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
+           
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
             $sql = "UPDATE `architect_information` SET `architect_name`= N'$raw_data[0]', `outstanding_ann`= N'$raw_data[1]', `punishment_ann`= N'$raw_data[2]' where `architect_ID`= N'$raw_data[3]'";
-            mysqli_query($db , $sql);
-            echo "Update: ".$raw_data[0]." complete<br>\n";
-        }   //
-        elseif(!mysqli_ping($db)){
-            echo 'Lost connection\n';
-            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-            $db = dbConnect();
-            insert_In_DB($db, $raw_data);
-        }
+            
+            if(mysqli_query($db , $sql)){
+                echo "Update: ".$raw_data[0]." complete<br>\n";
+            }
+            else{
+                insert_In_DB($db, $raw_data, $fp);
+            }
+            
+        }   
+
         else{
             echo "SQL Error: " . mysqli_error($db)."\n";
-            $fp = fopen("log.txt","w");
-            fwrite($fp, $raw_data[3].$raw_data[0].$raw_data[1].$raw_data[2].PHP_EOL);
-            return $fp;
+            fwrite($fp, $raw_data[3].",".$raw_data[0].",".$raw_data[1].",".$raw_data[2].PHP_EOL);
             //exit;
         }
     }
