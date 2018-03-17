@@ -102,9 +102,6 @@ foreach($opening_data as $opening_data_key => $opening_data_value){
 
             }while(!$html || checkExpired($html, $verify_code_url_ID, $cookie_file, $timeout, $code));
            
-
-            
-            //InsertInDB($db, $complete_data);
         }
     }
 
@@ -134,7 +131,7 @@ mysqli_close($db);
 /****************************************************************FUNCTION*********************************************************************/
 
 
-function InsertInDB($db, $raw_data){
+function InsertInDB(&$db, $raw_data){
         
     $sql = "INSERT INTO `architect_office` (architect_name, office_ID, office_name, address, county, mark, architect_ID) 
     
