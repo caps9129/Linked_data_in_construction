@@ -55,7 +55,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
             $xpath = create_dom($html);
 
             if($i == 1){    //只要第一次拿到頁數就好了~~
-                $page = getpage($xpath, $data_Digits, $page);
+                $page = getpage($xpath, $data_Digits);
               
             }
 
@@ -468,14 +468,6 @@ function getSuperviseContent($str){
     return $arr_data;
 }
 
-/*function reconnect(&$db, $raw_data, $fp){
-    if(!mysqli_ping($db)){
-        echo 'Lost connection\n';
-        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-        $db = dbConnect();
-        insert_In_DB($db, $raw_data, $fp);  
-    }
-}*/
 
 //讀取資料並存入資料庫
 function insert_In_DB(&$db, $raw_data, &$fp){
@@ -745,7 +737,7 @@ function getCheckNumber($image_url, $cookie_file){
 
 
 //取得頁數
-function getpage($xpath, $data_Digits, $page){
+function getpage($xpath, $data_Digits){
     /*if($xpath){*/
     foreach($xpath->query('//span[@class = "pagebanner"]') as $node) {  //取得頁數
         $temp = array();    //儲存所有可能字元
