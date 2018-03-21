@@ -78,15 +78,15 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                         
                             $length = sizeof($arr_data_value);
 
-                            for($i = 0 ; $i < $length ; $i++){      
+                            for($j = 0 ; $j < $length ; $j++){      
                                 
-                                if($i % 9 == 0){
+                                if($j % 9 == 0){
                                     $store_data = array();
                                 }
 
-                                array_push($store_data, $arr_data_value[$i]);   //每八個element重新給成新的一維陣列
+                                array_push($store_data, $arr_data_value[$j]);   //每八個element重新給成新的一維陣列
 
-                                if($i % 9 == 8){       
+                                if($j % 9 == 8){       
 
                                     //print_r($store_data);
                                     $store_data = QueryFromDB($db, $store_data, $fpQueryError);   //傳給db做query的動作回傳更新後陣列
@@ -98,6 +98,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                             
                        }
                     }
+
                 }
             }
 
@@ -132,7 +133,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
     $row = $result->fetch_array(MYSQLI_BOTH);
     if(mysqli_num_rows($result) != 0 && !$row['registration_code'] == false){
         $data[8] = $row['registration_code'];
-        echo "select: ".$row['registration_code']."complete\n";
+        //echo "select: ".$row['registration_code']."complete\n";
     }
     else{
 
@@ -144,7 +145,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
     $row = $result->fetch_array(MYSQLI_BOTH);
     if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
         $data[6] = $row['architect_ID'];
-        echo "select: ".$row['architect_ID']."complete\n";
+        //echo "select: ".$row['architect_ID']."complete\n";
     }
     else{
        
@@ -157,7 +158,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
     if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
         
         $data[7] = $row['architect_ID'];
-        echo "select: ".$row['architect_ID']."complete\n";
+        //echo "select: ".$row['architect_ID']."complete\n";
     }
     else{
         
@@ -577,7 +578,7 @@ function InsertInDB(&$db, $raw_data, &$fp){
             $sql = "UPDATE `architect_project` SET `license_type`= N'$raw_data[0]', `license_url`= N'$raw_data[2]', `address`= N'$raw_data[4]', `creator`= N'$raw_data[5]', `designer`= N'$raw_data[6]', `supervisor`= N'$raw_data[7]', `contractor`= N'$raw_data[8]' , `year`= N'$raw_data[1]' where `architect_license`= N'$raw_data[3]'";
             
             if(mysqli_query($db , $sql)){
-                echo "Update: ".$raw_data[3]." complete\n";
+                //echo "Update: ".$raw_data[3]." complete\n";
             }
             else{
                 InsertInDB($db, $raw_data, $fp);
@@ -590,8 +591,8 @@ function InsertInDB(&$db, $raw_data, &$fp){
             fwrite($fp, $raw_data[3].";".$raw_data[0].";".$raw_data[2].";".$raw_data[4].";".$raw_data[5].";".$raw_data[6].";".$raw_data[7].";".$raw_data[8].";".$raw_data[1].PHP_EOL);
         }
     }
-    else    
-        echo "Insert: ".$raw_data[3]." complete\n";
+    /*else    
+        echo "Insert: ".$raw_data[3]." complete\n";*/
     
 }
 
