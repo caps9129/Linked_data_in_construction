@@ -67,7 +67,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                 
                 foreach($postURL as $postURLValue){
                         
-                    //$arr_data = [classifaction:(0)/(1)][證照url][證照][地點][起造人][設計人][監造人][承造人]
+                    //$arr_data = [classifaction:(0)/(1)][year][證照url][證照][地點][起造人][設計人][監造人][承造人]
 
                     $arr_data = GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $code, $login_url_p01, $login_url_p02, $login_url_p03, $login_url_p04, $data_Digits);
                     
@@ -128,43 +128,84 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
         QueryFromDB($db, $data, $fpQueryError); 
     }
         
-    $sql = "SELECT `registration_code` FROM `building_contractor` WHERE `Industry_name` LIKE N'$data[8]'";
-    $result = $db->query($sql);
+    $sql_contractor = "SELECT `registration_code` FROM `building_contractor` WHERE `Industry_name` LIKE N'$data[8]'";
+
+    echo $sql_contractor."\n";
+
+    $result = $db->query($sql_contractor);
     $row = $result->fetch_array(MYSQLI_BOTH);
+
     if(mysqli_num_rows($result) != 0 && !$row['registration_code'] == false){
         $data[8] = $row['registration_code'];
-        //echo "select: ".$row['registration_code']."complete\n";
+        echo "select Contractor ID: ".$row['registration_code']."completed\n";
     }
     else{
-
-        fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        if(!mysqli_ping($db)){ 
+            echo 'Lost connection\n';
+            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            $db = DBConnect();
+            QueryFromDB($db, $data, $fpQueryError); 
+        }
+        else{
+            echo "select Contractor ID: ".$row['registration_code']."failed\n";
+            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        }
     }
+
+    echo "------------------------------------------------------------------------------------------\n";
     
-    $sql = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[6]'";
-    $result = $db->query($sql);
+    $sql_designer = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[6]'";
+
+    echo $sql_designer."\n";
+
+    $result = $db->query($sql_designer);
     $row = $result->fetch_array(MYSQLI_BOTH);
+
     if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
         $data[6] = $row['architect_ID'];
-        //echo "select: ".$row['architect_ID']."complete\n";
+        echo "select Architect ID: ".$row['architect_ID']."completed\n";
     }
     else{
-       
-        fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        if(!mysqli_ping($db)){ 
+            echo 'Lost connection\n';
+            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            $db = DBConnect();
+            QueryFromDB($db, $data, $fpQueryError); 
+        }
+        else{
+            echo "select Contractor ID: ".$row['registration_code']."failed\n";
+            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        }
     }
+    
+    echo "------------------------------------------------------------------------------------------\n";
 
-    $sql = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[7]'";
-    $result = $db->query($sql);
+    $sql_supervisor = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[7]'";
+
+    echo $sql_supervisor."\n";
+
+    $result = $db->query($sql_supervisor);
     $row = $result->fetch_array(MYSQLI_BOTH);
+
     if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
         
         $data[7] = $row['architect_ID'];
-        //echo "select: ".$row['architect_ID']."complete\n";
+        echo "select Architect ID: ".$row['architect_ID']."completed\n";
     }
     else{
-        
-        fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        if(!mysqli_ping($db)){ 
+            echo 'Lost connection\n';
+            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+            $db = DBConnect();
+            QueryFromDB($db, $data, $fpQueryError); 
+        }
+        else{
+            echo "select Contractor ID: ".$row['registration_code']."failed\n";
+            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+        }
     }
 
+    echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
     return $data;
 
 }
@@ -257,6 +298,11 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
         do{
             $html = PostURL($login_url_p01, $postURLValue, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+            if(!$html){
+                echo "遺失建造人頁面\n ";
+            }
+
         }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
         
         $arr_url = GetDetailURL($html);                                         //取得建造人詳細頁面的連結
@@ -272,6 +318,10 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
 
                         $html = PostURL($login_url_p01, $url, $cookie_file);   //取得建造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+                        if(!$html){
+                            echo "遺失建造人詳細頁面\n ";
+                        }
 
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
                     
@@ -332,6 +382,11 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
         do{
             $html = PostURL($login_url_p02, $postURLValue, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+            if(!$html){
+                echo "遺失設計人頁面\n ";
+            }
+
         }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
         
         $arr_url = GetDetailURL($html);                                         //取得設計人詳細頁面的連結
@@ -346,6 +401,10 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     do{
                         $html = PostURL($login_url_p02, $url, $cookie_file);   //取得設計人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+                        if(!$html){
+                            echo "遺失設計人詳細頁面\n ";
+                        }
                     
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
                     
@@ -407,6 +466,11 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
         do{
             $html = PostURL($login_url_p03, $postURLValue, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+            if(!$html){
+                echo "遺失監造人頁面\n ";
+            }
+
         }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
         
         $arr_url = GetDetailURL($html);                                         //取得監造人詳細頁面的連結
@@ -421,6 +485,10 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     do{
                         $html = PostURL($login_url_p03, $url, $cookie_file);   //取得監造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+                        if(!$html){
+                            echo "遺失監造人詳細頁面\n ";
+                        }
                     
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
                     
@@ -481,6 +549,11 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
         do{
             $html = PostURL($login_url_p04, $postURLValue, $cookie_file);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+            if(!$html){
+                echo "遺失承造人頁面\n ";
+            }
+
         }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
         
         $arr_url = GetDetailURL($html);                                         //取得承造人詳細頁面的連結
@@ -495,6 +568,11 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     do{
                         $html = PostURL($login_url_p04, $urlvalue, $cookie_file);   //取得承造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+                        if(!$html){
+                            echo "遺失承造人詳細頁面\n ";
+                        }
+                        
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
                     
                     if($i == 1){
@@ -558,10 +636,9 @@ function InsertInDB(&$db, $raw_data, &$fp){
         $fp = fopen("SQL_Error.txt","w");
     }
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
-    $sql = "INSERT INTO `architect_project` (architect_license, license_type, license_url, address, creator, designer, supervisor, contractor, year) 
-    VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]', N'$raw_data[1]')";
+    $sql = "INSERT INTO `architect_project` (architect_license, license_type, license_url, address, creator, designer, supervisor, contractor, year) VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]', N'$raw_data[1]')";
 
-    //echo $sql."\n";
+    echo $sql."\n";
                 
     if(!mysqli_ping($db)){ 
         echo 'Lost connection\n';
@@ -577,8 +654,10 @@ function InsertInDB(&$db, $raw_data, &$fp){
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
             $sql = "UPDATE `architect_project` SET `license_type`= N'$raw_data[0]', `license_url`= N'$raw_data[2]', `address`= N'$raw_data[4]', `creator`= N'$raw_data[5]', `designer`= N'$raw_data[6]', `supervisor`= N'$raw_data[7]', `contractor`= N'$raw_data[8]' , `year`= N'$raw_data[1]' where `architect_license`= N'$raw_data[3]'";
             
+            echo $sql."\n";
+
             if(mysqli_query($db , $sql)){
-                //echo "Update: ".$raw_data[3]." complete\n";
+                echo "Update: ".$raw_data[3]." complete\n";
             }
             else{
                 InsertInDB($db, $raw_data, $fp);
@@ -591,8 +670,11 @@ function InsertInDB(&$db, $raw_data, &$fp){
             fwrite($fp, $raw_data[3].";".$raw_data[0].";".$raw_data[2].";".$raw_data[4].";".$raw_data[5].";".$raw_data[6].";".$raw_data[7].";".$raw_data[8].";".$raw_data[1].PHP_EOL);
         }
     }
-    /*else    
-        echo "Insert: ".$raw_data[3]." complete\n";*/
+
+    else    
+        echo "Insert: ".$raw_data[3]." complete\n";
+
+        echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
     
 }
 
@@ -686,13 +768,13 @@ function DBConnect(){
     /*$db = mysqli_connect("10.21.100.7", "root", "", "building",53306);*/
     if(!$db){
         die("dbConnect fail". mysqli_connect_error()."\n");
-        exit;
+        DBConnect();
     }
     else{
         echo "dbConnect Successful!!<br>\n";
         if (!$db->set_charset("utf8")) {
             printf("Error loading character set utf8: %s\n", $db->error);
-            exit();
+            
         } else {
             printf("Current character set: %s\n", $db->character_set_name());
         }
