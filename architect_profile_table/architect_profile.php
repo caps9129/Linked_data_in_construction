@@ -43,7 +43,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
             do{
                 $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
             
-                $html = post($login_url, $post, $cookie_file);
+                $html = post($login_url, $post, $cookie_file, $timeout);
 
                 $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
@@ -71,7 +71,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                     if(preg_match('/(p02_code=)([\w]+)/', $postURLValue)){  //設計人連結
                         do{
                             $design_data = array();
-                            $html = post($login_url_p02_for_postURL, $postURLValue, $cookie_file);
+                            $html = post($login_url_p02_for_postURL, $postURLValue, $cookie_file, $timeout);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
                             if(!$html)
                                 echo "Lost html\n";
@@ -85,7 +85,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                     else{                                                   //監造人連結
                         do{
                             $supervise_data = array();
-                            $html = post($login_url_p03_for_postURL, $postURLValue, $cookie_file);
+                            $html = post($login_url_p03_for_postURL, $postURLValue, $cookie_file, $timeout);
                             $html = iconv("Big5", "UTF-8//IGNORE", $html);
                             if(!$html)
                                 echo "Lost html\n";
@@ -147,7 +147,7 @@ foreach($arr_total_data as $rowdata){
         do{
             $total_post_getID = "id_no_d21=&name_d21=$total_post_name&edu_level_d21=&capacity_get_d21=&job_d21=&insrand=$code";
         
-            $html = post($info_login_url, $total_post_getID, $cookie_file);
+            $html = post($info_login_url, $total_post_getID, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
             if(!$html)
@@ -216,7 +216,7 @@ foreach($arr_update_data as $update_data_key => $update_data_value){
             }
         
             
-            $html = post($info_login_url, $post, $cookie_file);
+            $html = post($info_login_url, $post, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
             
             if(!$html){
@@ -687,11 +687,14 @@ function getCookie($cookie_url, $cookie_file, $timeout){
 }
 
 //傳入參數並回傳內容
-function post($url, $post, $cookie_file){  
+function post($url, $post, $cookie_file, $timeout){  
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_HEADER, false);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER,1);
+    curl_setopt($curl, CURLOPT_NOSIGNAL,1);
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);  //等待瀏覽器的回應時間
+    curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($curl, CURLOPT_POST,1); //開啟POST
     curl_setopt($curl, CURLOPT_POSTFIELDS, $post);  //傳遞要求參數給伺服器
     curl_setopt($curl, CURLOPT_COOKIEFILE, $cookie_file);

@@ -35,7 +35,7 @@ foreach($countycode as $countykey => $countyvalue){
         do{    
             $post = "com_id_no=&com_name=&com_id_area=$countyvalue&pwd_name=&pwd_id=&insrand=$code&pageNo=$page";
 
-            $html = post($login_url, $post, $cookie_file);
+            $html = post($login_url, $post, $cookie_file, $timeout);
 
             $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
@@ -82,7 +82,7 @@ foreach($opening_data as $opening_data_key => $opening_data_value){
 
                 $post_getID = "id_no_d21=&name_d21=$name&edu_level_d21=&capacity_get_d21=&job_d21=&insrand=$code";
                 
-                $html = post($login_url_ID, $post_getID, $cookie_file);
+                $html = post($login_url_ID, $post_getID, $cookie_file, $timeout);
 
                 if($html){
                     $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
@@ -322,11 +322,14 @@ function getCookie($cookie_url, $cookie_file, $timeout){
 }
 
 //傳入參數並回傳內容
-function post($url, $post, $cookie_file){  
+function post($url, $post, $cookie_file, $timeout){  
     $curl = curl_init();
     curl_setopt($curl, CURLOPT_URL, $url);
     curl_setopt($curl, CURLOPT_HEADER, false);
     curl_setopt($curl, CURLOPT_RETURNTRANSFER,1);
+    curl_setopt($curl, CURLOPT_NOSIGNAL,1);
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);  //等待瀏覽器的回應時間
+    curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
     curl_setopt($curl, CURLOPT_POST,1); //開啟POST
     curl_setopt($curl, CURLOPT_POSTFIELDS, $post);  //傳遞要求參數給伺服器
     curl_setopt($curl, CURLOPT_COOKIEFILE, $cookie_file);
