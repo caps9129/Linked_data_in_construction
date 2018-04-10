@@ -41,16 +41,13 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
         do{
             do{
                 $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
-            
-                $html = PostURL($login_url, $post, $cookie_file);
+
+                $html = PostURL($login_url, $post, $cookie_file, $timeout);
 
                 $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
-                if(!$html){
-                    echo "Lost resume page!!\n";
-                }
 
-            }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+            }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
 
             $xpath = CreateDom($html);
 
@@ -66,16 +63,18 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
             if($postURL){
                 
                 foreach($postURL as $postURLValue){
-                        
+                 
                     //$arr_data = [classifaction:(0)/(1)][year][證照url][證照][地點][起造人][設計人][監造人][承造人]
 
                     $arr_data = GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $code, $login_url_p01, $login_url_p02, $login_url_p03, $login_url_p04, $data_Digits);
                     
                     //print_r($arr_data);
 
-                    if($arr_data){                                 
+                    if($arr_data){  
+                               
                        foreach($arr_data as $arr_data_value) {      //將二維陣列$arr_data切割
                         
+
                             $length = sizeof($arr_data_value);
 
                             for($j = 0 ; $j < $length ; $j++){      
@@ -94,13 +93,19 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 
                                 }
 
+                                
+
                             }
                             
                        }
-                    }
 
+                    }
+                    
+                    $arr_data = array();
                 }
+              
             }
+
 
             $i++;
         }while($i<=$page);
@@ -130,82 +135,96 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
         
     $sql_contractor = "SELECT `registration_code` FROM `building_contractor` WHERE `Industry_name` LIKE N'$data[8]'";
 
-    echo $sql_contractor."\n";
-
     $result = $db->query($sql_contractor);
-    $row = $result->fetch_array(MYSQLI_BOTH);
-
-    if(mysqli_num_rows($result) != 0 && !$row['registration_code'] == false){
-        $data[8] = $row['registration_code'];
-        echo "select Contractor ID: ".$row['registration_code']."completed\n";
+    if(!$result){
+        echo 'Lost connection\n';
+        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+        $db = DBConnect();
+        QueryFromDB($db, $data, $fpQueryError); 
     }
     else{
-        if(!mysqli_ping($db)){ 
-            echo 'Lost connection\n';
-            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-            $db = DBConnect();
-            QueryFromDB($db, $data, $fpQueryError); 
+        $row = $result->fetch_array(MYSQLI_BOTH);
+        if(!$row['registration_code'] == false && mysqli_num_rows($result) != 0){
+            $data[8] = $row['registration_code'];
+            echo "select Contractor ID: ".$row['registration_code']."completed\n";
         }
         else{
-            echo "select Contractor ID: ".$row['registration_code']."failed\n";
-            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            if(!mysqli_ping($db)){ 
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = DBConnect();
+                QueryFromDB($db, $data, $fpQueryError); 
+            }
+            else{
+                echo "select Contractor ID: ".$row['registration_code']."failed\n";
+                fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            }
         }
     }
 
-    echo "------------------------------------------------------------------------------------------\n";
     
     $sql_designer = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[6]'";
 
-    echo $sql_designer."\n";
-
     $result = $db->query($sql_designer);
-    $row = $result->fetch_array(MYSQLI_BOTH);
 
-    if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
-        $data[6] = $row['architect_ID'];
-        echo "select Architect ID: ".$row['architect_ID']."completed\n";
+    if(!$result){
+        echo 'Lost connection\n';
+        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+        $db = DBConnect();
+        QueryFromDB($db, $data, $fpQueryError); 
     }
     else{
-        if(!mysqli_ping($db)){ 
-            echo 'Lost connection\n';
-            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-            $db = DBConnect();
-            QueryFromDB($db, $data, $fpQueryError); 
+        $row = $result->fetch_array(MYSQLI_BOTH);
+        if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
+            $data[6] = $row['architect_ID'];
+            echo "select Architect ID: ".$row['architect_ID']."completed\n";
         }
         else{
-            echo "select Contractor ID: ".$row['registration_code']."failed\n";
-            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            if(!mysqli_ping($db)){ 
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = DBConnect();
+                QueryFromDB($db, $data, $fpQueryError); 
+            }
+            else{
+                echo "select Contractor ID: ".$row['registration_code']."failed\n";
+                fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            }
         }
     }
     
-    echo "------------------------------------------------------------------------------------------\n";
 
     $sql_supervisor = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[7]'";
 
-    echo $sql_supervisor."\n";
-
     $result = $db->query($sql_supervisor);
-    $row = $result->fetch_array(MYSQLI_BOTH);
 
-    if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
-        
-        $data[7] = $row['architect_ID'];
-        echo "select Architect ID: ".$row['architect_ID']."completed\n";
+    if(!$result){
+        echo 'Lost connection\n';
+        mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+        $db = DBConnect();
+        QueryFromDB($db, $data, $fpQueryError); 
     }
     else{
-        if(!mysqli_ping($db)){ 
-            echo 'Lost connection\n';
-            mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
-            $db = DBConnect();
-            QueryFromDB($db, $data, $fpQueryError); 
+        $row = $result->fetch_array(MYSQLI_BOTH);
+        if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
+        
+            $data[7] = $row['architect_ID'];
+            echo "select Architect ID: ".$row['architect_ID']."completed\n";
         }
         else{
-            echo "select Contractor ID: ".$row['registration_code']."failed\n";
-            fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            if(!mysqli_ping($db)){ 
+                echo 'Lost connection\n';
+                mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
+                $db = DBConnect();
+                QueryFromDB($db, $data, $fpQueryError); 
+            }
+            else{
+                echo "select Contractor ID: ".$row['registration_code']."failed\n";
+                fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+            }
         }
     }
 
-    echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
     return $data;
 
 }
@@ -292,39 +311,34 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
     $arr_data = array();
     $arr_url = array();
     $page = 1;
+    
 
     if(preg_match('/(p01_code=)([\w]+)/', $postURLValue)){                      //起造人頁面
         
         do{
-            $html = PostURL($login_url_p01, $postURLValue, $cookie_file);
+            
+            $html = PostURL($login_url_p01, $postURLValue, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-            if(!$html){
-                echo "遺失建造人頁面\n ";
-            }
-
-        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
-        
-        $arr_url = GetDetailURL($html);                                         //取得建造人詳細頁面的連結
-        
+        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+                
+        $arr_url = GetDetailURL($html);                                         //取得起造人詳細頁面的連結
+       
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
                 $i = 1;
                 do{
                     
                     $url = $urlvalue."&d-16544-p=".$i;
-                    
+               
                     do{
-
-                        $html = PostURL($login_url_p01, $url, $cookie_file);   //取得建造人詳細頁面
+                        
+                        $html = PostURL($login_url_p01, $url, $cookie_file, $timeout);   //取得起造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-                        if(!$html){
-                            echo "遺失建造人詳細頁面\n ";
-                        }
-
-                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
                     
+
                     if($i == 1){
                         $xpath = CreateDom($html);
                         $page = GetPage($xpath, $data_Digits);
@@ -368,26 +382,26 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     }
 
                     $arr_tmp = GetTableContent($html, $ID_define, $year);
+
                     array_push($arr_data, $arr_tmp);
 
                     $i++;
 
                 }while($i <= $page);
-            }
+            }  
         }
+
     }
     elseif(preg_match('/(p02_code=)([\w]+)/', $postURLValue)){                  //設計人頁面
 
-        
+
         do{
-            $html = PostURL($login_url_p02, $postURLValue, $cookie_file);
+            
+            $html = PostURL($login_url_p02, $postURLValue, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-            if(!$html){
-                echo "遺失設計人頁面\n ";
-            }
-
-        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+        
         
         $arr_url = GetDetailURL($html);                                         //取得設計人詳細頁面的連結
         
@@ -397,16 +411,15 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                 do{
                     
                     $url = $urlvalue."&d-16544-p=".$i;
+
                     
                     do{
-                        $html = PostURL($login_url_p02, $url, $cookie_file);   //取得設計人詳細頁面
+                        
+                        $html = PostURL($login_url_p02, $url, $cookie_file, $timeout);   //取得設計人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-                        if(!$html){
-                            echo "遺失設計人詳細頁面\n ";
-                        }
-                    
-                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+
                     
                     if($i == 1){
                         $xpath = CreateDom($html);
@@ -452,26 +465,27 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     }
 
                     $arr_tmp = GetTableContent($html, $ID_define, $year);
+
                     array_push($arr_data, $arr_tmp);
+
 
                     $i++;
 
                 }while($i <= $page);
             }
         }
+
     }
     elseif(preg_match('/(p03_code=)([\w]+)/', $postURLValue)){                  //監造人頁面
         
 
         do{
-            $html = PostURL($login_url_p03, $postURLValue, $cookie_file);
+            $html="";
+            $html = PostURL($login_url_p03, $postURLValue, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-            if(!$html){
-                echo "遺失監造人頁面\n ";
-            }
-
-        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+        
         
         $arr_url = GetDetailURL($html);                                         //取得監造人詳細頁面的連結
         
@@ -482,15 +496,13 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     
                     $url = $urlvalue."&d-16544-p=".$i;
 
-                    do{
-                        $html = PostURL($login_url_p03, $url, $cookie_file);   //取得監造人詳細頁面
-                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-                        if(!$html){
-                            echo "遺失監造人詳細頁面\n ";
-                        }
+                    do{
+                        $html = PostURL($login_url_p03, $url, $cookie_file, $timeout);   //取得監造人詳細頁面
+                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
                     
-                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+
                     
                     if($i == 1){
                         $xpath = CreateDom($html);
@@ -535,28 +547,30 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     }
 
                     $arr_tmp = GetTableContent($html, $ID_define, $year);
-                    array_push($arr_data, $arr_tmp);
 
+                    array_push($arr_data, $arr_tmp);
+      
                     $i++;
 
                 }while($i <= $page);
             }
         }
+
     }
     elseif(preg_match('/(p04_code=)([\w]+)/', $postURLValue)){                  //回傳承造人頁面
         
 
         do{
-            $html = PostURL($login_url_p04, $postURLValue, $cookie_file);
+  
+            $html = PostURL($login_url_p04, $postURLValue, $cookie_file, $timeout);
             $html = iconv("Big5", "UTF-8//IGNORE", $html);
 
-            if(!$html){
-                echo "遺失承造人頁面\n ";
-            }
 
-        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+
         
         $arr_url = GetDetailURL($html);                                         //取得承造人詳細頁面的連結
+
                                              
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
@@ -565,15 +579,14 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     
                     $url = $urlvalue."&d-16544-p=".$i;
 
-                    do{
-                        $html = PostURL($login_url_p04, $urlvalue, $cookie_file);   //取得承造人詳細頁面
-                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                    echo $url."in\n";
 
-                        if(!$html){
-                            echo "遺失承造人詳細頁面\n ";
-                        }
+                    do{
                         
-                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+                        $html = PostURL($login_url_p04, $urlvalue, $cookie_file, $timeout);   //取得承造人詳細頁面
+                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        
+                    }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
                     
                     if($i == 1){
                         $xpath = CreateDom($html);
@@ -618,13 +631,17 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     }
                     
                     $arr_tmp = GetTableContent($html, $ID_define, $year);
+                    
+
                     array_push($arr_data, $arr_tmp);
+                    
                     
                     $i++;  
                 
                 }while($i <= $page);
             }
         }
+       
     }
     return $arr_data;
 }
@@ -638,7 +655,6 @@ function InsertInDB(&$db, $raw_data, &$fp){
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
     $sql = "INSERT INTO `architect_project` (architect_license, license_type, license_url, address, creator, designer, supervisor, contractor, year) VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]', N'$raw_data[1]')";
 
-    echo $sql."\n";
                 
     if(!mysqli_ping($db)){ 
         echo 'Lost connection\n';
@@ -671,8 +687,10 @@ function InsertInDB(&$db, $raw_data, &$fp){
         }
     }
 
-    else    
+    else{   
+        echo $sql."\n";
         echo "Insert: ".$raw_data[3]." complete\n";
+    }
 
         echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
     
@@ -681,37 +699,46 @@ function InsertInDB(&$db, $raw_data, &$fp){
 
 //檢查驗證碼過期
 function CheckExpired($str, $verify_code_url, $cookie_file, $timeout, &$code){
-    $html = str_get_html($str);
-    if($html){
-        $design_expired = $html->find('td[class=memo]');
-        $resume_expired = $html->find('font');
-        if($design_expired){
-            foreach($design_expired as $expired){
-                $expired = DeleteHtml($expired->innertext);
-                if(strpos($expired, "驗證碼輸入錯誤") !== false){
-                    echo "cookie expired reconnect...1\n";
-                    $cookie_file = GetCookie($verify_code_url, $cookie_file, $timeout);
-                    $code = GetCheckNumber($verify_code_url, $cookie_file);  
-                    return 1;
+    
+    if($str === false || $str == ""){
+        return 1;
+    }
+
+    else{
+
+        $html = str_get_html($str);
+
+        if($html){
+            $design_expired = $html->find('td[class=memo]');
+            $resume_expired = $html->find('font');
+            if($design_expired){
+                foreach($design_expired as $expired){
+                    $expired = DeleteHtml($expired->innertext);
+                    if(strpos($expired, "驗證碼輸入錯誤") !== false){
+                        echo "cookie expired reconnect...1\n";
+                        $cookie_file = GetCookie($verify_code_url, $cookie_file, $timeout);
+                        $code = GetCheckNumber($verify_code_url, $cookie_file);  
+                        return 1;
+                    }
                 }
+                
             }
+            if($resume_expired){
+                foreach($resume_expired as $expired){
+                    $expired = DeleteHtml($expired->innertext);
+                    if(strpos($expired, "驗證碼錯誤") !== false){
+                        echo "cookie expired reconnect...2\n";
+                        $cookie_file = GetCookie($verify_code_url, $cookie_file, $timeout);
+                        $code = GetCheckNumber($verify_code_url, $cookie_file); 
+                        return 1; 
+                    }
+                }    
+            }
+            return 0; 
             
         }
-        if($resume_expired){
-            foreach($resume_expired as $expired){
-                $expired = DeleteHtml($expired->innertext);
-                if(strpos($expired, "驗證碼錯誤") !== false){
-                    echo "cookie expired reconnect...2\n";
-                    $cookie_file = GetCookie($verify_code_url, $cookie_file, $timeout);
-                    $code = GetCheckNumber($verify_code_url, $cookie_file); 
-                    return 1; 
-                }
-            }    
-        }
-        return 0; 
-          
+        return 1; 
     }
-    return 1; 
  
 
 }
@@ -795,16 +822,44 @@ function GetCookie($cookie_url, $cookie_file, $timeout){
 }
 
 //傳入參數並回傳內容
-function PostURL($url, $post, $cookie_file){  
+function PostURL($url, $post, $cookie_file, $timeout){  
+    
     $curl = curl_init();
+   
     curl_setopt($curl, CURLOPT_URL, $url);
+   
     curl_setopt($curl, CURLOPT_HEADER, false);
+    
     curl_setopt($curl, CURLOPT_RETURNTRANSFER,1);
+    
+    curl_setopt($curl, CURLOPT_NOSIGNAL,1);
+  
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);  //等待瀏覽器的回應時間
+  
+    curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
+    
     curl_setopt($curl, CURLOPT_POST,1); //開啟POST
+  
     curl_setopt($curl, CURLOPT_POSTFIELDS, $post);  //傳遞要求參數給伺服器
+   
     curl_setopt($curl, CURLOPT_COOKIEFILE, $cookie_file);
+
+    $info = curl_getinfo($curl);
+   
     $html = curl_exec($curl);
+    if(!$html){
+        echo 'Took ' . $info['total_time'] . ' seconds to send a request to ' . $info['url'];
+    }
     curl_close($curl);
+    $curl_errno = curl_errno($curl);  
+    $curl_error = curl_error($curl);
+    if($curl_errno >0){  
+        echo "cURL Error ($curl_errno): $curl_error\n";  
+    }
+
+    
+
+    
     return $html;
 }
 
