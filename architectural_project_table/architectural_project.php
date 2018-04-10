@@ -114,7 +114,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 
 }
 
-
+mysqli_close($db);
 
 exit;
 
