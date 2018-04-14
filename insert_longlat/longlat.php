@@ -8,9 +8,9 @@ define("geocoding_URL", "http://geocoding.sgis.tw/position.php");
 define("timeout", 10);
 
 //撈取資料需要表格名，主鍵，地址；更新資料需要表格名，主鍵，經緯度
-define("architect_office", array('architect_office', 'office_ID', 'address', 'latitude', 'longitude'));
-define("building_contractor", array('building_contractor', 'contractor_name', 'address', 'latitude', 'longitude'));
-define("architect_project", array('architect_project', 'architect_license', 'address', 'latitude', 'longitude'));
+define("architect_office", array('architect_office', 'office_ID', 'address', 'accuracy', 'latitude', 'longitude'));
+define("building_contractor", array('building_contractor', 'contractor_name', 'address', 'accuracy', 'latitude', 'longitude'));
+define("architect_project", array('architect_project', 'architect_license', 'address', 'accuracy', 'latitude', 'longitude'));
 
 do{
     printf("1.update architect office table\n");
@@ -21,25 +21,25 @@ do{
     $choice = read_chioce();
     if($choice == 1){
         $DataBase = new DBClass();
-        $DataBase->positioning(architect_office[0], architect_office[1], architect_office[2], architect_office[3], architect_office[4]);
-        $DataBase->disconnrct();
+        $DataBase->positioning(architect_office[0], architect_office[1], architect_office[2], architect_office[3], architect_office[4], architect_office[5]);
+        $DataBase->disconnect();
     }
     else if($choice == 2){
         $DataBase = new DBClass();
-        $DataBase->positioning(building_contractor[0], building_contractor[1], building_contractor[2], building_contractor[3], building_contractor[4]);
-        $DataBase->disconnrct();
+        $DataBase->positioning(building_contractor[0], building_contractor[1], building_contractor[2], building_contractor[3], building_contractor[4], architect_office[5]);
+        $DataBase->disconnect();
     }
     else if($choice == 3){
         $DataBase = new DBClass();
-        $DataBase->positioning(architect_project[0], architect_project[1], architect_project[2], architect_project[3], architect_project[4]);
-        $DataBase->disconnrct();
+        $DataBase->positioning(architect_project[0], architect_project[1], architect_project[2], architect_project[3], architect_project[4], architect_office[5]);
+        $DataBase->disconnect();
     }
     else if($choice == 4){
         $DataBase = new DBClass();
-        $DataBase->positioning(architect_office[0], architect_office[1], architect_office[2], architect_office[3], architect_office[4]);
-        $DataBase->positioning(building_contractor[0], building_contractor[1], building_contractor[2], building_contractor[3], building_contractor[4]);
-        $DataBase->positioning(architect_project[0], architect_project[1], architect_project[2], architect_project[3], architect_project[4]);
-        $DataBase->disconnrct();
+        $DataBase->positioning(architect_office[0], architect_office[1], architect_office[2], architect_office[3], architect_office[4], architect_office[5]);
+        $DataBase->positioning(building_contractor[0], building_contractor[1], building_contractor[2], building_contractor[3], building_contractor[4], architect_office[5]);
+        $DataBase->positioning(architect_project[0], architect_project[1], architect_project[2], architect_project[3], architect_project[4], architect_office[5]);
+        $DataBase->disconnect();
     }
 }while($choice != 0);
 
@@ -85,9 +85,9 @@ class DBClass {
     }
 
 
-    public function update_DB($table_name, $primary_key, $primary_key_value, $lng, $lng_value, $lat, $lat_value){
+    public function update_DB($table_name, $primary_key, $primary_key_value, $accuracy, $accuracy_value, $lng, $lng_value, $lat, $lat_value){
 
-        $this->sql = "UPDATE $table_name SET $lng= N'$lng_value', $lat= N'$lat_value' where $primary_key= N'$primary_key_value'"; 
+        $this->sql = "UPDATE $table_name SET $accuracy= N'$accuracy_value', $lng= N'$lng_value', $lat= N'$lat_value' where $primary_key= N'$primary_key_value'"; 
         $this->rows = $this->conn->query($this->sql);
 
         if(!$this->rows){
@@ -112,7 +112,7 @@ class DBClass {
     }
 
     //定位architect表格資料
-    public function positioning($table_name, $primary_key, $address, $lat, $lng) {
+    public function positioning($table_name, $primary_key, $address, $accuracy, $lat, $lng) {
 
         $this->query = "SELECT $primary_key, $address FROM $table_name";
         $this->result = $this->conn->query($this->query);
@@ -158,7 +158,7 @@ class DBClass {
 
             echo $this->accuracy.",".$this->longitude.",".$this->latitude."\n";
 
-            $this->update_DB($table_name, $primary_key, $this->row[$primary_key], $lng, $this->longitude, $lat, $this->latitude);
+            $this->update_DB($table_name, $primary_key, $this->row[$primary_key], $accuracy, $this->accuracy, $lng, $this->longitude, $lat, $this->latitude);
         } 
     }
 
