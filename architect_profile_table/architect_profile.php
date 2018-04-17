@@ -77,7 +77,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                                 echo "Lost html\n";
                             else{   
                                 $design_data = getDesignContent($html);         //取得設計人資訊
-                                print_r($design_data);
+                                //print_r($design_data);
                             }
                         }while(!$design_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html); //不確定能不能檢查出來這裡的過期
                         array_push($arr_data_design, $design_data);
@@ -91,7 +91,7 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
                                 echo "Lost html\n";
                             else{  
                                 $supervise_data = getSuperviseContent($html);   //取得監造人資訊
-                                print_r($supervise_data);
+                                //print_r($supervise_data);
                             }
                         }while(!$supervise_data || checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);   
                         array_push($arr_data_supervise, $supervise_data);
@@ -108,7 +108,6 @@ foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
 //將兩者資訊一起PUSH到$arr_total_data，準備以$arr_total_data來獲取剩下ID，存進資料庫
 array_push($arr_total_data, $arr_data_design);
 array_push($arr_total_data, $arr_data_supervise);
-
 
 
 /***************************************Insert data*************************************************/
@@ -610,8 +609,9 @@ function getDesignContent($str){
      
     /*echo $arr_data[1]."\n";*/
     
-
+    
     return $arr_data;
+    
  
 }
 //將名字轉乘big5並encode丟給post
