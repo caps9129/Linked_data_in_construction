@@ -28,68 +28,118 @@ $code = getCheckNumber($verify_code_url, $cookie_file);
 
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
 foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
-    echo $countycodeKey."<br>";
+  
     foreach($year as $yearKey => $yearValue){   //跑年度
-        echo $yearValue."<br>";
-        $i=1;
-        do{   //跑頁數
-            do{
-                $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
-            
-                $html = post($login_url, $post, $cookie_file);
-                
-                $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
-
-                if(!$html){
-                    echo "Lost page 0!!\n";
-                }
-
-            }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
         
-            $xpath = create_dom($html);
+        for($license = 0 ; $license <= 9 ; $license++){
+            $i=1;
+            $license_no = $license;
+            $zerofilling = $license;
+            $zerofilling_aft = 0;
+            $arr_rowdata = array();
+            $flag = true;
+            $i = 1; //在還未拿到正確頁數時先預設頁數為一
+       
+            do{   //跑頁數
+                do{
+                    $post = http_build_query(array("d-16544-p" => "$i", "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "$license_no", "insrand" => $code, "submit" => '%ACd%B8%DF'));
+                
+                    $html = post($login_url, $post, $cookie_file, $timeout);
+                    
+                    $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
-            if($i == 1){    //只要第一次拿到頁數就好了~~
-                $page = getpage($xpath, $data_Digits, $page);
-                /*echo "PAGE:".$page;*/
-            }   
+                    if(!$html){
+                        echo "Lost page 0!!\n";
+                    }
 
-            echo "page: {$countycodeKey} | {$yearValue} | {$i}/{$page}<br>\n";
+                }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+            
+                $xpath = create_dom($html);
 
-            $postURL = getURLContent($xpath);   //獲取往下一層的連結
-
-            if($postURL){
-                $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
-                $check = 0;
-                foreach($postURL as $postURLKey => $postURLValue){
-           
-                    $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
-             
-                    do{
+                if($i == 1){    //只要第一次拿到頁數就好了~~
+                    $page = getpage($xpath, $data_Digits, $page);
+                    if($page == 20){    //往右走
                         
-                        $html = post($login_url_for_postURL, $postURLValue, $cookie_file);
-                        $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        $flag = false; 
+                        if($zerofilling == 0){
+                            $zerofilling = 1;
+                        }
+                        $zerofilling = str_pad($zerofilling, 2, "1", STR_PAD_LEFT);
 
-                        if(!$html){
-                            echo "Lost page 1!!\n";
+                        $zerofilling_aft = $zerofilling;
+                        
+                    }
+
+                    else{   //往下走
+
+                        $zerofilling_lng = strlen($zerofilling_aft); //  111 211 311 411 
+                        if($zerofilling_lng == 2 && floor($zerofilling_aft/10) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 10;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 3 && floor($zerofilling_aft/100) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 100;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 4 && floor($zerofilling_aft/1000) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 1000;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 5 && floor($zerofilling_aft/10000) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 10000;
+                            $flag = false;
                         }
 
-                    }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
-                   
-                    $xpath = create_dom($html);
+                    }
+                }   
+
+                echo "page: {$countycodeKey} | {$yearValue} | {$license_no} | {$i}/{$page}\n";
+
+                $postURL = getURLContent($xpath);   //獲取往下一層的連結
+
+                if($i == $page && $flag == false){
                     
-                    $textcontent = getTEXTContent($xpath);   //回傳文字陣列
-                    
-                    $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
-                    
-                    $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
-                        
-                    insertIndb($db, $raw_data, $fp);   //將資料存入資料庫
-                   
+                    $license_no = $zerofilling_aft;
+                    $i = 0;
+                    $flag = true;
                 }
-            }
-            $i++;
-        }while($i <= $page);
-        
+                
+
+                if($postURL){
+                    $login_url_for_postURL = "http://cpabm.cpami.gov.tw/cers/SearchContDetial.do"; 
+                    $check = 0;
+                    foreach($postURL as $postURLKey => $postURLValue){
+            
+                        $postURLValue =  implode("", $postURLValue);   //將連結切割成字串使得可以當作post使用
+                
+                        do{
+                            
+                            $html = post($login_url_for_postURL, $postURLValue, $cookie_file, $timeout);
+                            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+
+                            if(!$html){
+                                echo "Lost page 1!!\n";
+                            }
+
+                        }while(checkExpired($html, $verify_code_url, $cookie_file, $timeout, $code) || !$html);
+                    
+                        $xpath = create_dom($html);
+                        
+                        $textcontent = getTEXTContent($xpath);   //回傳文字陣列
+                        
+                        $urlcontent = getTEXTContentWithURL($xpath);    //回傳下一層的連結
+                        
+                        $raw_data = match($textcontent, $urlcontent);   //將原字串"連結"替換成的url並存入原陣列(準備將資料寫入資料庫)
+
+                        //print_r($raw_data);
+                        
+                        insertIndb($db, $raw_data, $fp);   //將資料存入資料庫
+                    
+                    }
+                }
+                $i++;
+            }while($i <= $page);
+        }
     }
     
 }
@@ -125,21 +175,55 @@ function insertIndb(&$db, $raw_data, &$fp){
         echo 'Lost connection\n';
         mysqli_close($db); //注意：一定要先執行數據庫關閉，這是關鍵 
         dbConnect();
-        insertIndb($db, $raw_data);
+        insertIndb($db, $raw_data, $fp);
     }
    
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
-   $sql = "INSERT INTO `building_contractor` (Industry_name, contractor_name, registration_code, uniform_number, capital, address, award_punishment, evaluation_level, construction_assessment) 
-   VALUES (N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]', N'$raw_data[3]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]')";
+
+    $primary_key = $raw_data[0]."_".$raw_data[3];
+
+    //
+
+   $sql = "INSERT INTO `building_contractor` (contractor_ID, industry_name, contractor_name, registration_code, uniform_number, capital, address, award_punishment, evaluation_level, construction_assessment) 
+   VALUES (N'$primary_key', N'$raw_data[0]', N'$raw_data[1]', N'$raw_data[2]', N'$raw_data[3]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]')";
 
     if(!mysqli_query($db , $sql)){  //插入失敗
         
         if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){  //?
-            
+            if($raw_data[2] == "" && $raw_data[3] == "" && $raw_data[4] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";
+            }
+            else if($raw_data[2] == "" && $raw_data[3] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `capital`= N'$raw_data[4]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";          
+            }
+            else if($raw_data[2] == "" && $raw_data[4] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `uniform_number`= N'$raw_data[3]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'"; 
+            }
+            else if($raw_data[3] == "" && $raw_data[4] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]',  
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";         
+            }
+            else if($raw_data[2] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `uniform_number`= N'$raw_data[3]', `capital`= N'$raw_data[4]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";          
+            }
+            else if($raw_data[3] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `capital`= N'$raw_data[4]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";        
+            }
+            else if($raw_data[4] == ""){
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `uniform_number`= N'$raw_data[3]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";
+            }
+            else{
+                $sql = "UPDATE `building_contractor` SET `industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `uniform_number`= N'$raw_data[3]', `capital`= N'$raw_data[4]', 
+                `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_ID`= N'$primary_key'";
+            }
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
-            $sql = "UPDATE `building_contractor` SET `Industry_name`= N'$raw_data[0]', `registration_code`= N'$raw_data[2]', `uniform_number`= N'$raw_data[3]', `capital`= N'$raw_data[4]', 
-                    `address`= N'$raw_data[5]', `award_punishment`= N'$raw_data[6]', `evaluation_level`= N'$raw_data[7]', `construction_assessment`= N'$raw_data[8]'where `contractor_name`= N'$raw_data[1]'";
            
+            fwrite($fp, $sql.PHP_EOL);
             if(mysqli_query($db , $sql)){
                 echo "Update: ".$raw_data[0]." complete<br>\n";
             }
@@ -192,7 +276,8 @@ function getTEXTContent($xpath){
 
 //連接資料庫
 function dbConnect(){
-    $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
+    //$db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
+    $db = mysqli_connect("140.109.161.93", "ntpc", "ac6tmsks@a", "ntpc");
     if(!$db){
         die("dbConnect fail". mysqli_connect_error()."\n");
         exit;
@@ -267,16 +352,43 @@ function getCookie($cookie_url, $cookie_file, $timeout){
 }
 
 //傳入參數並回傳內容
-function post($url, $post, $cookie_file){  
+function post($url, $post, $cookie_file, $timeout){  
     $curl = curl_init();
+   
     curl_setopt($curl, CURLOPT_URL, $url);
+   
     curl_setopt($curl, CURLOPT_HEADER, false);
+    
     curl_setopt($curl, CURLOPT_RETURNTRANSFER,1);
+    
+    curl_setopt($curl, CURLOPT_NOSIGNAL,1);
+  
+    curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, $timeout);  //等待瀏覽器的回應時間
+  
+    curl_setopt($curl, CURLOPT_TIMEOUT, $timeout);
+    
     curl_setopt($curl, CURLOPT_POST,1); //開啟POST
+  
     curl_setopt($curl, CURLOPT_POSTFIELDS, $post);  //傳遞要求參數給伺服器
+   
     curl_setopt($curl, CURLOPT_COOKIEFILE, $cookie_file);
+
+    $info = curl_getinfo($curl);
+   
     $html = curl_exec($curl);
+    if(!$html){
+        echo 'Took ' . $info['total_time'] . ' seconds to send a request to ' . $info['url'];
+    }
+    
+    $curl_errno = curl_errno($curl);  
+    $curl_error = curl_error($curl);
+    if($curl_errno > 0){  
+        echo "cURL Error ($curl_errno): $curl_error\n";  
+    }
+
+    
     curl_close($curl);
+    
     return $html;
 }
 

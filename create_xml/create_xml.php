@@ -1,9 +1,9 @@
 <?php
 
-    define("DB_HOST", "db.sgis.tw");
-    define("DB_USER", "sinicaintern");
-    define("DB_PASS", "27857108311");
-    define("DB_NAME", "building");
+    define("DB_HOST", "140.109.161.93");
+    define("DB_USER", "ntpc");
+    define("DB_PASS", "ac6tmsks@a");
+    define("DB_NAME", "ntpc");
 
     $DB_Table_Information = "architect_information";
     $DB_Table_Office = "architect_office";
@@ -94,18 +94,113 @@
             fwrite($fp, '<?xml version="1.0" encoding="utf-8" ?>'.PHP_EOL);
            
             fwrite($fp, '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"'.PHP_EOL);
-            fwrite($fp, "\t\n".'xmlns:archi="http://architecture/'.$DB_Table_Option.'">'.PHP_EOL);  
+            fwrite($fp, "\t\n".'xmlns:archi="http://archi.sgis.tw/ontology/">'.PHP_EOL);  
             fwrite($fp, PHP_EOL);
             
-            $i = 0;
+      
             
             
             while($this->row = $data->fetch_assoc()){    
                
-                fwrite($fp, "\t".'<rdf:Description rdf:about="http://architecture/'.$DB_Table_Option.'">'.PHP_EOL);
+                
                 foreach($colnames as $colname){  
                     
-                    fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                    if($DB_Table_Option == "architect_information"){
+                        
+                        if($colname == "architect_ID"){
+                            fwrite($fp, "\t".'<rdf:Description rdf:about="http://archi.sgis.tw/ontology/'.$this->row[$colname].'">'.PHP_EOL);
+                        }
+                        else if($colname == "project_ID"){
+                            $arr_project = explode(";",$this->row[$colname]);
+                            foreach($arr_project as $project_value){
+                                if($project_value == "無相關資料"){
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$project_value.'</archi:'.$colname.'>'.PHP_EOL);
+                                }
+                                else{
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$project_value.'"/>'.PHP_EOL);
+                                }
+                            }
+                        }
+                        else{
+                            fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                        }
+                    }
+                    else if($DB_Table_Option == "architect_office"){
+                        if($colname == "office_ID"){
+                            fwrite($fp, "\t".'<rdf:Description rdf:about="http://archi.sgis.tw/ontology/'.$this->row[$colname].'">'.PHP_EOL);
+                        }
+                        else if($colname == "architect_ID"){
+                            fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row[$colname].'"/>'.PHP_EOL);
+                        }
+                        else if($colname == "project_ID"){
+                            $arr_project = explode(";",$this->row[$colname]);
+                            foreach($arr_project as $project_value){
+                                if($project_value == "無相關資料"){
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$project_value.'</archi:'.$colname.'>'.PHP_EOL);
+                                }
+                                else{
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$project_value.'"/>'.PHP_EOL);
+                                }
+                            }
+                        }
+                        else{
+                            fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                        }
+                    }
+                    else if($DB_Table_Option == "building_contractor"){
+                        if($colname == "contractor_ID"){
+                            fwrite($fp, "\t".'<rdf:Description rdf:about="http://archi.sgis.tw/ontology/'.$this->row[$colname].'">'.PHP_EOL);
+                        }
+                        else if($colname == "project_ID"){
+                            $arr_project = explode(";",$this->row[$colname]);
+                            foreach($arr_project as $project_value){
+                                if($project_value == "無相關資料"){
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$project_value.'</archi:'.$colname.'>'.PHP_EOL);
+                                }
+                                else{
+                                    fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$project_value.'"/>'.PHP_EOL);
+                                }
+                            }
+                        }
+                        else{
+                            fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                        }
+
+                    }
+                    else if($DB_Table_Option == "architect_project"){
+                        if($colname == "architect_ID"){
+                            //print($this->row['license_type'].'_'.$this->row[$colname]);
+                            fwrite($fp, "\t".'<rdf:Description rdf:about="http://archi.sgis.tw/ontology/'.$this->row['license_type'].'_'.$this->row[$colname].'">'.PHP_EOL);
+                        }
+                        else if($colname == "designer"){
+                            if(strpos($this->row[$colname], "建證字第") != false){
+                                fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row['$colname'].'"/>'.PHP_EOL);
+                            }
+                            else{
+                                fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                            }
+                        }
+                        else if($colname == "supervisor"){
+                            if(strpos($this->row[$colname], "第") != false){
+                                fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row[$colname].'"/>'.PHP_EOL);
+                            }
+                            else{
+                                fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                            }
+                        }
+                        else if($colname == "contractor"){
+                            if(strpos($this->row[$colname], "_") != false){
+                                fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row[$colname].'"/>'.PHP_EOL);
+                            }
+                            else{
+                                fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                            }
+                        }
+                        else{
+                            fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
+                        }
+                    }
+
                     
                 }
                 fwrite($fp, "\t".'</rdf:Description>'.PHP_EOL);

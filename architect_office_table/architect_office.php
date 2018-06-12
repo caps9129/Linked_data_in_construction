@@ -297,8 +297,8 @@ function DeleteHtml($str){
 
 //連接資料庫
 function dbConnect(){
-    $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
-    /*$db = mysqli_connect("10.21.100.7", "root", "", "building",53306);*/
+    // $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
+    $db = mysqli_connect("140.109.161.93", "ntpc", "ac6tmsks@a", "ntpc");;
     if(!$db){
         die("dbConnect fail". mysqli_connect_error()."\n");
         exit;

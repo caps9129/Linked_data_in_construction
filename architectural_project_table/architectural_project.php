@@ -37,78 +37,130 @@ $code = GetCheckNumber($verify_code_url, $cookie_file);
  //運作模式為取得先取得同一縣市同一年度不同頁數 >> 取得同一縣市不同年度不同頁數 >> 取得不同縣市不同年度不同頁數
 foreach($countycode as $countycodeKey => $countycodeValue){   //跑縣市
     foreach($year as $yearKey => $yearValue){   //跑年度
-        $i=1;
-        do{
+        for($license = 1 ; $license <= 9 ; $license++){
+            $i=1;
+            $license_no = $license;
+            $zerofilling = $license;
+            $zerofilling_aft = 0;
+            $arr_rowdata = array();
+            $flag = true;
+            $i = 1; //在還未拿到正確頁數時先預設頁數為一
+
             do{
-                $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "", "insrand" => $code, "submit" => '%ACd%B8%DF'));
+                do{
+                    $post = http_build_query(array("d-16544-p" => $i, "budare" => $countycodeValue, "license_yy" => $yearValue, "license_no1" => "$license_no", "insrand" => $code, "submit" => '%ACd%B8%DF'));
 
-                $html = PostURL($login_url, $post, $cookie_file, $timeout);
+                    $html = PostURL($login_url, $post, $cookie_file, $timeout);
 
-                $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
+                    $html = iconv("Big5", "UTF-8//IGNORE", $html);  //BIG5 to UTF8。加上IGNORE以忽略非法字眼
 
 
-            }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+                }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
 
-            $xpath = CreateDom($html);
+                $xpath = CreateDom($html);
 
-            if($i == 1){    //只要第一次拿到頁數就好了~~
-                $page = GetPage($xpath, $data_Digits);
-              
-            }
-
-            echo "page: {$countycodeKey} | {$yearValue} | {$i}/{$page}<br>\n";
-
-            $postURL = GetURLContent($html);   //獲取往下一層的連結
-            
-            if($postURL){
-                
-                foreach($postURL as $postURLValue){
-                 
-                    //$arr_data = [classifaction:(0)/(1)][year][證照url][證照][地點][起造人][設計人][監造人][承造人]
-
-                    $arr_data = GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $code, $login_url_p01, $login_url_p02, $login_url_p03, $login_url_p04, $data_Digits);
-                    
-                    //print_r($arr_data);
-
-                    if($arr_data){  
-                               
-                       foreach($arr_data as $arr_data_value) {      //將二維陣列$arr_data切割
+                if($i == 1){    //只要第一次拿到頁數就好了~~
+                    $page = GetPage($xpath, $data_Digits);
+                    if($page == 20){    //往右走
                         
+                        $flag = false; 
 
-                            $length = sizeof($arr_data_value);
+                        $zerofilling = str_pad($zerofilling, 2, "1", STR_PAD_LEFT);
 
-                            for($j = 0 ; $j < $length ; $j++){      
-                                
-                                if($j % 9 == 0){
-                                    $store_data = array();
-                                }
+                        $zerofilling_aft = $zerofilling;
+                        
+                    }
 
-                                array_push($store_data, $arr_data_value[$j]);   //每八個element重新給成新的一維陣列
+                    else{   //往下走
 
-                                if($j % 9 == 8){       
-
-                                    //print_r($store_data);
-                                    $store_data = QueryFromDB($db, $store_data, $fpQueryError);   //傳給db做query的動作回傳更新後陣列
-                                    InsertInDB($db, $store_data, $fp);
-
-                                }
-
-                                
-
-                            }
-                            
-                       }
+                        $zerofilling_lng = strlen($zerofilling_aft); //  111 211 311 411 
+                        if($zerofilling_lng == 2 && floor($zerofilling_aft/10) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 10;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 3 && floor($zerofilling_aft/100) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 100;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 4 && floor($zerofilling_aft/1000) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 1000;
+                            $flag = false;
+                        }
+                        else if($zerofilling_lng == 5 && floor($zerofilling_aft/10000) != 9){
+                            $zerofilling_aft = $zerofilling_aft + 10000;
+                            $flag = false;
+                        }
 
                     }
-                    
-                    $arr_data = array();
+                
                 }
-              
-            }
+
+                echo "page: {$countycodeKey} | {$yearValue} | {$license_no} | {$i}/{$page}\n";
+
+                $postURL = GetURLContent($html);   //獲取往下一層的連結
+
+                //print_r($postURL);
+
+                if($i == $page && $flag == false){
+                    
+                    $license_no = $zerofilling_aft;
+                    $i = 0;
+                    $flag = true;
+                }
+                
+                if($postURL){
+                    
+                    foreach($postURL as $postURLValue){
+                    
+                        //$arr_data = [classifaction:(0)/(1)][year][證照url][證照][地點][起造人][設計人][監造人][承造人]
+
+                        //echo $postURLValue."\n";
+
+                        $arr_data = GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $code, $login_url_p01, $login_url_p02, $login_url_p03, $login_url_p04, $data_Digits);
+                        print_r($arr_data);
+
+                        if($arr_data){  
+                                
+                           foreach($arr_data as $arr_data_value) {      //將二維陣列$arr_data切割
+                            
+
+                                $length = sizeof($arr_data_value);
+
+                                for($j = 0 ; $j < $length ; $j++){      
+                                    
+                                    if($j % 9 == 0){
+                                        $store_data = array();
+                                    }
+
+                                    array_push($store_data, $arr_data_value[$j]);   //每八個element重新給成新的一維陣列
+
+                                    if($j % 9 == 8){       
+
+                                       
+                                        $store_data = QueryFromDB($db, $store_data, $fpQueryError);   //傳給db做query的動作回傳更新後陣列
+                                        print_r($store_data);
+                                        InsertInDB($db, $store_data, $fp);
+
+                                    }
+
+                                    
+
+                                }
+                                
+                           }
+
+                        }
+                        
+                        $arr_data = array();
+                    }
+                
+                }
 
 
-            $i++;
-        }while($i<=$page);
+                $i++;
+
+            }while($i<=$page);
+        }
         
     }
 
@@ -133,7 +185,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
         QueryFromDB($db, $data, $fpQueryError); 
     }
         
-    $sql_contractor = "SELECT `registration_code` FROM `building_contractor` WHERE `Industry_name` LIKE N'$data[8]'";
+    $sql_contractor = "SELECT `contractor_ID` FROM `building_contractor` WHERE `Industry_name` LIKE N'$data[8]'";
 
     $result = $db->query($sql_contractor);
     if(!$result){
@@ -144,9 +196,9 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
     }
     else{
         $row = $result->fetch_array(MYSQLI_BOTH);
-        if(!$row['registration_code'] == false && mysqli_num_rows($result) != 0){
-            $data[8] = $row['registration_code'];
-            echo "select Contractor ID: ".$row['registration_code']."completed\n";
+        if(!$row['contractor_ID'] == false && mysqli_num_rows($result) != 0){
+            $data[8] = $row['contractor_ID'];
+           // echo "select Cntoractor ID: ".$row['contractor_name']."completed\n";
         }
         else{
             if(!mysqli_ping($db)){ 
@@ -156,7 +208,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
                 QueryFromDB($db, $data, $fpQueryError); 
             }
             else{
-                echo "select Contractor ID: ".$row['registration_code']."failed\n";
+               // echo "select Contractor ID: ".$row['contractor_name']."failed\n";
                 fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
             }
         }
@@ -177,7 +229,7 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
         $row = $result->fetch_array(MYSQLI_BOTH);
         if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
             $data[6] = $row['architect_ID'];
-            echo "select Architect ID: ".$row['architect_ID']."completed\n";
+            //echo "select Architect ID: ".$row['architect_ID']."completed\n";
         }
         else{
             if(!mysqli_ping($db)){ 
@@ -187,14 +239,14 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
                 QueryFromDB($db, $data, $fpQueryError); 
             }
             else{
-                echo "select Contractor ID: ".$row['registration_code']."failed\n";
-                fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+                //echo "select Architect_ID: ".$row['architect_ID']."failed\n";
+                fwrite($fpQueryError, "No match Architect ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
             }
         }
     }
     
 
-    $sql_supervisor = "SELECT `architect_ID` FROM `architect_information` WHERE `architect_name` LIKE N'$data[7]'";
+    $sql_supervisor = "SELECT `office_ID` FROM `architect_office` WHERE `architect_name` LIKE N'$data[7]'";
 
     $result = $db->query($sql_supervisor);
 
@@ -206,10 +258,11 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
     }
     else{
         $row = $result->fetch_array(MYSQLI_BOTH);
-        if(mysqli_num_rows($result) != 0 && !$row['architect_ID'] == false){
+        if(mysqli_num_rows($result) != 0 && !$row['office_ID'] == false){
         
-            $data[7] = $row['architect_ID'];
-            echo "select Architect ID: ".$row['architect_ID']."completed\n";
+
+            $data[7] = $row['office_ID'];
+            //echo "select Supervisor ID: ".$row['architect_ID']."completed\n";
         }
         else{
             if(!mysqli_ping($db)){ 
@@ -219,8 +272,8 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
                 QueryFromDB($db, $data, $fpQueryError); 
             }
             else{
-                echo "select Contractor ID: ".$row['registration_code']."failed\n";
-                fwrite($fpQueryError, "No match Contractor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
+                //echo "select Supervisor_ID: ".$row['architect_ID']."failed\n";
+                fwrite($fpQueryError, "No match Supervisor ID:".$data[3].";".$data[0].";".$data[2].";".$data[4].";".$data[5].";".$data[6].";".$data[7].";".$data[8].";".$data[1].PHP_EOL);
             }
         }
     }
@@ -229,11 +282,19 @@ function QueryFromDB(&$db, $data, &$fpQueryError){
 
 }
 
-function GetTableContent($str, $ID_define, $year){
+function GetTableContent($str, $ID_define, $year, $ifcontractorID, $contractor_str){
 
     $arr_content = array();
+    $arr_url = [];
     $html = str_get_html($str);
     $row = 0;
+    if($ifcontractorID == 0){
+        $contractorID = "無此資料";
+    }
+    else{
+        $contractorID = GetContractorID($contractor_str);
+        //echo $contractorID;
+    }
     
     if($html){
         $table = $html->find('div[class=content2]', -1);
@@ -242,7 +303,8 @@ function GetTableContent($str, $ID_define, $year){
 
                 $column = 0;
                 
-                if($row != 0){                                  //忽略第一行
+                if($row != 0){
+                    //array_push($arr_content, $contractorID);                                  //忽略第一行
                     array_push($arr_content, $ID_define);
                     array_push($arr_content, $year);
                 }
@@ -263,6 +325,8 @@ function GetTableContent($str, $ID_define, $year){
                     }
 
                     $text = DeleteHtml($td->innertext);
+
+
                     
                     if($text){
                         array_push($arr_content, $text);          //取得內容
@@ -280,6 +344,7 @@ function GetTableContent($str, $ID_define, $year){
     return $arr_content;
 }
 
+
 function GetDetailURL($str){
     
   
@@ -292,10 +357,16 @@ function GetDetailURL($str){
         if($table){
             foreach($table->find('a') as $a){
                 $url = trim(DeleteHtml($a->href));
-                if(preg_match('/([^?]+)(\?)(p02_code=)([\s\S]+)/',$url,$matches)){
+                if(preg_match('/([^?]+)(\?)(p01_code=)([\s\S]+)/',$url,$matches)){
+                    $arr_url[]="{$matches[3]}{$matches[4]}";
+                }
+                elseif(preg_match('/([^?]+)(\?)(p02_code=)([\s\S]+)/',$url,$matches)){
                     $arr_url[]="{$matches[3]}{$matches[4]}";
                 }
                 elseif(preg_match('/([^?]+)(\?)(p03_code=)([\s\S]+)/',$url,$matches)){
+                    $arr_url[]="{$matches[3]}{$matches[4]}";
+                }
+                elseif(preg_match('/([^?]+)(\?)(p04_id=)([\s\S]+)/',$url,$matches)){
                     $arr_url[]="{$matches[3]}{$matches[4]}";
                 }
             }
@@ -304,6 +375,35 @@ function GetDetailURL($str){
     return $arr_url;
 }
 
+
+function GetContractorID($str){
+
+    $html = str_get_html($str);
+    
+    $count = 0;
+    $none_data = "無相關資料";
+
+    foreach($html->find('td[class=td]') as $td_value){
+
+        if($count == 0){
+            $industry_name = DeleteHtml($td_value->innertext);
+        }
+        if($count == 3){
+            $uniform_num = DeleteHtml($td_value->innertext);
+        }
+
+        $count++;
+
+    }
+
+    if($industry_name && $uniform_num){
+        return $industry_name."_".$uniform_num;
+    }
+    else{
+        return $industry_name;
+    }
+
+}
 //回傳頁面
 function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $code, $login_url_p01, $login_url_p02, $login_url_p03, $login_url_p04, $data_Digits){
     
@@ -324,6 +424,7 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                 
         $arr_url = GetDetailURL($html);                                         //取得起造人詳細頁面的連結
        
+
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
                 $i = 1;
@@ -335,6 +436,7 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         
                         $html = PostURL($login_url_p01, $url, $cookie_file, $timeout);   //取得起造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        //echo $html;
 
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
                     
@@ -381,7 +483,7 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         }
                     }
 
-                    $arr_tmp = GetTableContent($html, $ID_define, $year);
+                    $arr_tmp = GetTableContent($html, $ID_define, $year, 0, 0); //
 
                     array_push($arr_data, $arr_tmp);
 
@@ -405,6 +507,7 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
         
         $arr_url = GetDetailURL($html);                                         //取得設計人詳細頁面的連結
         
+
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
                 $i = 1;
@@ -417,6 +520,7 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         
                         $html = PostURL($login_url_p02, $url, $cookie_file, $timeout);   //取得設計人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        //echo $html;
 
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
 
@@ -464,10 +568,9 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         }
                     }
 
-                    $arr_tmp = GetTableContent($html, $ID_define, $year);
+                    $arr_tmp = GetTableContent($html, $ID_define, $year, 0, 0);
 
                     array_push($arr_data, $arr_tmp);
-
 
                     $i++;
 
@@ -486,9 +589,9 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
 
         }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
         
-        
         $arr_url = GetDetailURL($html);                                         //取得監造人詳細頁面的連結
         
+
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
                 $i = 1;
@@ -500,10 +603,12 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                     do{
                         $html = PostURL($login_url_p03, $url, $cookie_file, $timeout);   //取得監造人詳細頁面
                         $html = iconv("Big5", "UTF-8//IGNORE", $html);
+                        //echo $html;
                     
                     }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
 
                     
+
                     if($i == 1){
                         $xpath = CreateDom($html);
                         $page = GetPage($xpath, $data_Digits);
@@ -546,31 +651,32 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         }
                     }
 
-                    $arr_tmp = GetTableContent($html, $ID_define, $year);
+                    $arr_tmp = GetTableContent($html, $ID_define, $year, 0, 0);
 
                     array_push($arr_data, $arr_tmp);
-      
+
                     $i++;
 
                 }while($i <= $page);
             }
         }
-
+        
     }
-    elseif(preg_match('/(p04_code=)([\w]+)/', $postURLValue)){                  //回傳承造人頁面
+    elseif(preg_match('/(p04_id=)([\w]+)/', $postURLValue)){                  //回傳承造人頁面
         
 
         do{
   
             $html = PostURL($login_url_p04, $postURLValue, $cookie_file, $timeout);
-            $html = iconv("Big5", "UTF-8//IGNORE", $html);
+            $contractor_html = iconv("Big5", "UTF-8//IGNORE", $html);
+            //echo $html;
 
 
-        }while(CheckExpired($html, $verify_code_url, $cookie_file, $timeout, $code));
+        }while(CheckExpired($contractor_html, $verify_code_url, $cookie_file, $timeout, $code));
 
         
-        $arr_url = GetDetailURL($html);                                         //取得承造人詳細頁面的連結
-
+        $arr_url = GetDetailURL($contractor_html);                                         //取得承造人詳細頁面的連結
+       
                                              
         if(!empty($arr_url)){
             foreach($arr_url as $urlvalue){
@@ -578,8 +684,6 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                 do{
                     
                     $url = $urlvalue."&d-16544-p=".$i;
-
-                    echo $url."in\n";
 
                     do{
                         
@@ -630,19 +734,18 @@ function GetHtmlPage($postURLValue, $verify_code_url, $cookie_file, $timeout, $c
                         }
                     }
                     
-                    $arr_tmp = GetTableContent($html, $ID_define, $year);
+                    $arr_tmp = GetTableContent($html, $ID_define, $year, 1 ,$contractor_html);
                     
-
                     array_push($arr_data, $arr_tmp);
-                    
                     
                     $i++;  
                 
                 }while($i <= $page);
             }
         }
-       
+ 
     }
+    
     return $arr_data;
 }
 
@@ -653,7 +756,7 @@ function InsertInDB(&$db, $raw_data, &$fp){
         $fp = fopen("SQL_Error.txt","w");
     }
     //主鍵設為contractor_name，不會有一直加入相同資料的問題
-    $sql = "INSERT INTO `architect_project` (architect_license, license_type, license_url, address, creator, designer, supervisor, contractor, year) VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]', N'$raw_data[1]')";
+    $sql = "INSERT INTO `architect_project` (architect_ID, license_type, license_url, address, creator, designer, supervisor, contractor, year) VALUES (N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[7]', N'$raw_data[8]', N'$raw_data[1]')";
 
                 
     if(!mysqli_ping($db)){ 
@@ -668,12 +771,14 @@ function InsertInDB(&$db, $raw_data, &$fp){
         if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
            
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
-            $sql = "UPDATE `architect_project` SET `license_type`= N'$raw_data[0]', `license_url`= N'$raw_data[2]', `address`= N'$raw_data[4]', `creator`= N'$raw_data[5]', `designer`= N'$raw_data[6]', `supervisor`= N'$raw_data[7]', `contractor`= N'$raw_data[8]' , `year`= N'$raw_data[1]' where `architect_license`= N'$raw_data[3]'";
+   
             
-            echo $sql."\n";
+            $sql = "UPDATE `architect_project` SET `license_type`= N'$raw_data[0]', `license_url`= N'$raw_data[2]', `address`= N'$raw_data[4]', `creator`= N'$raw_data[5]', `designer`= N'$raw_data[6]', `supervisor`= N'$raw_data[7]', `contractor`= N'$raw_data[8]', `year`= N'$raw_data[2]' where `architect_ID`= N'$raw_data[3]'";
+            
+            
 
             if(mysqli_query($db , $sql)){
-                echo "Update: ".$raw_data[3]." complete\n";
+                echo "Update: ".$raw_data[4]." complete\n";
             }
             else{
                 InsertInDB($db, $raw_data, $fp);
@@ -688,11 +793,11 @@ function InsertInDB(&$db, $raw_data, &$fp){
     }
 
     else{   
-        echo $sql."\n";
-        echo "Insert: ".$raw_data[3]." complete\n";
+        //echo $sql."\n";
+        echo "Insert: ".$raw_data[4]." complete\n";
     }
 
-        echo "------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n";
+        
     
 }
 
@@ -709,6 +814,7 @@ function CheckExpired($str, $verify_code_url, $cookie_file, $timeout, &$code){
         $html = str_get_html($str);
 
         if($html){
+            
             $design_expired = $html->find('td[class=memo]');
             $resume_expired = $html->find('font');
             if($design_expired){
@@ -743,6 +849,24 @@ function CheckExpired($str, $verify_code_url, $cookie_file, $timeout, &$code){
 
 }
 
+//為了得到開業證號
+function GetSupervisorID($str){
+
+    $count = 0;
+
+    $html = str_get_html($str);
+    foreach($html->find('td[class=td]') as $a){
+
+        if($count == 1){
+            $SupervisorID = DeleteHtml($a->innertext);
+            return $SupervisorID;
+        }
+
+        $count++;
+    }
+
+}
+
 //獲得設計師以及監造人連結
 function GetURLContent($str){ 
     $postURL = array();
@@ -765,7 +889,7 @@ function GetURLContent($str){
                 elseif(preg_match('/([^?]+)(\?)(p03_code=)([\w]+)/',$url,$matches)){        //監造人url
                     $postURL[]="{$matches[3]}{$matches[4]}";
                 }
-                elseif(preg_match('/([^?]+)(\?)(p04_code=)([\w]+)/',$url,$matches)){        //承造人url
+                elseif(preg_match('/([^?]+)(\?)(p04_id=)([\w]+)/',$url,$matches)){        //承造人url
                     $postURL[]="{$matches[3]}{$matches[4]}";
                 }
             }
@@ -791,8 +915,9 @@ function DeleteHtml($str){
 
 //連接資料庫
 function DBConnect(){
-    $db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
-    /*$db = mysqli_connect("10.21.100.7", "root", "", "building",53306);*/
+    //$db = mysqli_connect("db.sgis.tw", "sinicaintern", "27857108311", "building");
+    $db = mysqli_connect("140.109.161.93", "ntpc", "ac6tmsks@a", "ntpc");
+    
     if(!$db){
         die("dbConnect fail". mysqli_connect_error()."\n");
         DBConnect();
@@ -850,15 +975,15 @@ function PostURL($url, $post, $cookie_file, $timeout){
     if(!$html){
         echo 'Took ' . $info['total_time'] . ' seconds to send a request to ' . $info['url'];
     }
-    curl_close($curl);
+    
     $curl_errno = curl_errno($curl);  
     $curl_error = curl_error($curl);
-    if($curl_errno >0){  
+    if($curl_errno > 0){  
         echo "cURL Error ($curl_errno): $curl_error\n";  
     }
 
     
-
+    curl_close($curl);
     
     return $html;
 }

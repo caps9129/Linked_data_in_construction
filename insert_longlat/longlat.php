@@ -1,16 +1,16 @@
 <?php
 
-define("DB_HOST", "db.sgis.tw");
-define("DB_USER", "sinicaintern");
-define("DB_PASS", "27857108311");
-define("DB_NAME", "building");
+define("DB_HOST", "140.109.161.93");
+define("DB_USER", "ntpc");
+define("DB_PASS", "ac6tmsks@a");
+define("DB_NAME", "ntpc");
 define("geocoding_URL", "http://geocoding.sgis.tw/position.php");
 define("timeout", 10);
 
 //撈取資料需要表格名，主鍵，地址；更新資料需要表格名，主鍵，經緯度
 define("architect_office", array('architect_office', 'office_ID', 'address', 'accuracy', 'latitude', 'longitude'));
-define("building_contractor", array('building_contractor', 'contractor_name', 'address', 'accuracy', 'latitude', 'longitude'));
-define("architect_project", array('architect_project', 'architect_license', 'address', 'accuracy', 'latitude', 'longitude'));
+define("building_contractor", array('building_contractor', 'contractor_ID', 'address', 'accuracy', 'latitude', 'longitude'));
+define("architect_project", array('architect_project', 'architect_ID', 'address', 'accuracy', 'latitude', 'longitude'));
 
 do{
     printf("1.update architect office table\n");
@@ -87,14 +87,15 @@ class DBClass {
 
     public function update_DB($table_name, $primary_key, $primary_key_value, $accuracy, $accuracy_value, $lng, $lng_value, $lat, $lat_value){
 
-        $this->sql = "UPDATE $table_name SET $accuracy= N'$accuracy_value', $lng= N'$lng_value', $lat= N'$lat_value' where $primary_key= N'$primary_key_value'"; 
+        $this->sql = "UPDATE $table_name SET $accuracy= N'$accuracy_value', $lng= N'$lng_value', $lat= N'$lat_value' where $primary_key= N'$primary_key_value'";
+        
         $this->rows = $this->conn->query($this->sql);
-
+        
         if(!$this->rows){
             
             if(!mysqli_ping($this->conn)){
                 $this->reconnect();
-                $this->update_DB();
+                $this->update_DB($table_name, $primary_key, $primary_key_value, $accuracy, $accuracy_value, $lng, $lng_value, $lat, $lat_value);
             }
             else if($this->rows->num_rows == 0){
                 echo "0 results\n";
@@ -106,7 +107,10 @@ class DBClass {
             }
         }
         else{
+       
             echo $primary_key_value." update completed\n";
+
+            
         }
        
     }
