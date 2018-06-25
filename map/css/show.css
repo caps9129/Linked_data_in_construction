@@ -1,0 +1,258 @@
+html , body{
+  height:100%;
+}
+#map {
+  height: 100%;
+}
+label{
+  margin:0;
+  color: #000;
+}
+.clearfix:after{
+	content:"";
+	display:table;
+	clear:both;
+}
+.header{
+  background-color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid #dddddd;
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.04);
+  padding: 1em;
+  position: absolute;
+  top: 0;
+  width: 100%;
+  margin: 0;
+}
+
+/* 圖層控制 */
+.container{
+  position: relative;
+  /* top: 75px;
+  left:0px; */
+}
+#panel {
+    position: relative;
+}
+#testButton {
+  background-color: blueviolet;
+  border-color: blueviolet;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 
+              0 6px 20px 0 rgba(0,0,0,0.19);
+}
+#testButton:hover {
+  background-color:rgb(163, 110, 212);
+  border-color:rgb(163, 110, 212);
+}
+#testButton:active {
+  background-color: rgb(163, 110, 212);
+  border-color:rgb(163, 110, 212);
+  box-shadow: 0 5px #666;
+  transform: translateY(4px);
+}
+#choose{
+  display:none;
+  position: relative;
+  background-color:white;
+  border:1px solid #999;
+  border-radius: 12px;
+  width: 170px;
+  top:2px;
+  text-align: left;
+  font-family:  'Microsoft JhengHei';
+  padding: 5px;
+  padding-left:9px;
+}
+/* 地址型態時間圖層 */
+.box{
+  border:1px solid #999;
+  background-color:white;
+  opacity: 0.8;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 
+              0 6px 20px 0 rgba(0,0,0,0.19);
+}
+.large{
+  width:300px;
+  height:120px;
+}
+.medium{
+  width:300px;
+  height:100px;
+}
+.s{
+  width:170px;
+  height:220px;
+}
+#Timebox{
+  display:none;
+  position: absolute;
+  top:70px;
+  right:15px;
+}
+#Countybox{
+  display:none;
+  position: absolute;
+  top:70px;
+  left:15px;
+}
+#IDbox{
+  display:none;
+  position: absolute;
+  bottom:20px;
+  right:15px;
+}
+.closeX{
+  position: relative;
+  float:right;
+  top:1px;
+  right:3px;
+  border-radius: 12px;
+  border:0;
+}
+.box-title{
+  width:-webkit-calc(100% - 24.06px);
+  width:-moz-calc(100% - 24.06px);
+  width:calc(100% - 24.06px);
+  margin-bottom: 0;
+  margin-top: 7px;
+  text-align: center;
+}
+.box-title h6{
+  font-size: 20px;
+  margin-left:15px;
+}
+/* type框框 */
+#typecheck{
+  font-family:  'Microsoft JhengHei';
+  padding-left:20px;
+}
+/* address框框 */
+.butbox{
+  width:-webkit-calc(100% - 24.06px);
+  width:-moz-calc(100% - 24.06px);
+  width:calc(100% - 24.06px);
+  text-align: center;
+  margin-left:9px;
+}
+.butt{
+  padding-right: 20px;
+  padding-left: 20px;
+  padding-top:0;
+  padding-bottom: 0;
+  margin-top:10px;
+  border-radius: 12px;
+  border:1px solid #999;
+  font-family:  'Microsoft JhengHei';
+  font-size: 15px;
+}
+.butt:hover {
+  background-color:#BEBEBE;
+  border-color:#BEBEBE;
+}
+.firstcounty{
+  width:-webkit-calc(100% - 24.06px);
+  width:-moz-calc(100% - 24.06px);
+  width:calc(100% - 24.06px);
+  margin-top: 15px;
+  margin-left:9px;
+  text-align: center;
+}
+.popup{
+	background-color:#FFF;
+	border: 1px solid #CCC;
+	padding: 0.1em 1em 0.5em 0.5em;
+}
+.closeY{
+  border-radius: 12px;
+  border:0;
+}
+/* time框框 */
+.rangebox{
+  position: relative;
+  width:90%;
+  left:5%;
+}
+
+.multiselect {
+  width: 200px;
+  position: absolute;
+  left: 16%;
+}
+
+.selectBox {
+  position: relative;
+}
+
+.selectBox select {
+  width: 100%;
+  font-weight: bold;
+}
+
+.overSelect {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+#checkboxes {
+  display: none;
+  border: 1px #dadada solid;
+}
+
+#checkboxes label {
+  display: block;
+}
+
+#checkboxes label:hover {
+  background-color: #1e90ff;
+}
+
+.ol-popup {
+  position: absolute;
+  background-color: white;
+  -webkit-filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+  filter: drop-shadow(0 1px 4px rgba(0,0,0,0.2));
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #cccccc;
+  bottom: 20px;
+  left: -52px;
+  min-width: 280px;
+  max-height: 180px;
+}
+.y{
+  max-height: 150px;
+  overflow-y: scroll;
+}
+.ol-popup:after, .ol-popup:before {
+  top: 100%;
+  border: solid transparent;
+  content: " ";
+  height: 0;
+  width: 0;
+  position: absolute;
+  pointer-events: none;
+}
+.ol-popup:after {
+  border-top-color: white;
+  border-width: 10px;
+  left: 48px;
+  margin-left: -10px;
+}
+.ol-popup:before {
+  border-top-color: #cccccc;
+  border-width: 11px;
+  left: 48px;
+  margin-left: -11px;
+}
+.ol-popup-closer {
+  text-decoration: none;
+  position: absolute;
+  top: 2px;
+  right: 8px;
+  border-radius: 12px;
+  border:0;
+}

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+	
+        xmlns:archi="http://archi.sgis.tw/ontology/">
+    <rdf:Description rdf:about="http://archi.sgis.tw/ontology/1_(100)嘉大鎮使字第00049號">
+		<archi:license_type>1</archi:license_type>
+		<archi:license_url>http://ga.cyhg.gov.tw/bupic/IDCheck?id=26802811266127802746&index_key=1003000490040IE4&canflag=1</archi:license_url>
+		<archi:project_address>嘉義縣大林鎮中林里19鄰中林125-25號</archi:project_address>
+		<archi:accuracy>1</archi:accuracy>
+		<archi:longitude>120.46992964148</archi:longitude>
+		<archi:latitude>23.590842703351</archi:latitude>
+		<archi:creator>江瑞Ｏ</archi:creator>
+		<archi:designer>建證字第2820號</archi:designer>
+		<archi:supervisor rdf:resource="http://archi.sgis.tw/ontology/嘉市建開證字第R000007號"/>
+		<archi:contractor rdf:resource="http://archi.sgis.tw/ontology/業昌營造股份有限公司_04865435"/>
+		<archi:year>103</archi:year>
+		<archi:log>2018-06-05 11:47:20</archi:log>
+    </rdf:Description>
+</rdf:RDF>    

@@ -173,8 +173,9 @@
                             fwrite($fp, "\t".'<rdf:Description rdf:about="http://archi.sgis.tw/ontology/'.$this->row['license_type'].'_'.$this->row[$colname].'">'.PHP_EOL);
                         }
                         else if($colname == "designer"){
-                            if(strpos($this->row[$colname], "建證字第") != false){
-                                fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row['$colname'].'"/>'.PHP_EOL);
+                            if(strpos($this->row[$colname], "證") != false){
+                                
+                                fwrite($fp, "\t\t".'<archi:'.$colname.' rdf:resource="http://archi.sgis.tw/ontology/'.$this->row[$colname].'"/>'.PHP_EOL);
                             }
                             else{
                                 fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
@@ -195,6 +196,11 @@
                             else{
                                 fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);
                             }
+                        }
+                        else if($colname == "license_url"){
+    
+                            fwrite($fp, "\t\t".'<archi:'.$colname.'>'.urlencode($this->row[$colname]).'</archi:'.$colname.'>'.PHP_EOL);
+
                         }
                         else{
                             fwrite($fp, "\t\t".'<archi:'.$colname.'>'.$this->row[$colname].'</archi:'.$colname.'>'.PHP_EOL);

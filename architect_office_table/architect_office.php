@@ -133,7 +133,7 @@ mysqli_close($db);
 
 function InsertInDB(&$db, $raw_data){
         
-    $sql = "INSERT INTO `architect_office` (architect_name, office_ID, office_name, address, county, mark, architect_ID) 
+    $sql = "INSERT INTO `architect_office` (architect_name, office_ID, office_name, office_address, county, mark, architect_ID) 
     
     VALUES (N'$raw_data[1]', N'$raw_data[4]', N'$raw_data[5]', N'$raw_data[6]', N'$raw_data[3]', N'$raw_data[0]', N'$raw_data[2]')";
     
@@ -141,7 +141,7 @@ function InsertInDB(&$db, $raw_data){
         
         if(strpos(mysqli_error($db),"key 'PRIMARY'")!==false){
             //當讀到contractor_name相同時，主動去判斷其他欄位是否異變
-            $sql = "UPDATE `architect_office` SET `architect_name`= N'$raw_data[1]', `office_name`= N'$raw_data[5]', `address`= N'$raw_data[6]', `county`= N'$raw_data[3]', `mark`= N'$raw_data[0]', `architect_ID`= N'$raw_data[2]' where `office_ID`= N'$raw_data[4]'";
+            $sql = "UPDATE `architect_office` SET `architect_name`= N'$raw_data[1]', `office_name`= N'$raw_data[5]', `office_address`= N'$raw_data[6]', `county`= N'$raw_data[3]', `mark`= N'$raw_data[0]', `architect_ID`= N'$raw_data[2]' where `office_ID`= N'$raw_data[4]'";
             mysqli_query($db , $sql);
             echo "Update: ".$raw_data[1]." complete<br>\n";
         }   
